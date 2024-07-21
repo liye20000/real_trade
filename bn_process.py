@@ -40,7 +40,7 @@ def get_bndata_via_API():
     um_futures_client = UMFutures()
 
     # logging.info(um_futures_client.klines("BTCUSDT", "1d"))
-    klines = um_futures_client.klines("BTCUSDT", "1d", limit = 100)
+    klines = um_futures_client.klines("BTCUSDT", "1h", limit = 550)
     # 将数据转换成Pandas DataFrame
     df = pd.DataFrame(klines, columns=[
         'timestamp', 'open', 'high', 'low', 'close', 'volume', 'close_time',
@@ -54,7 +54,7 @@ def get_bndata_via_API():
     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
 
     # 打印DataFrame
-    # print(df.head())
+    print(df.head())
 
     # 保存数据到CSV文件
     df.to_csv('data/btc_usdt_test.csv', index=False)
@@ -65,8 +65,8 @@ def process_strategy(df:pd.DataFrame):
     # 确保所有数据列都是浮点数类型
     df = df.astype(float)
     # 计算短期和长期简单均线
-    short_window = 10
-    long_window = 30
+    short_window = 11
+    long_window = 21
 
     df['SMA_short'] = df['close'].rolling(window=short_window).mean()
     df['SMA_long'] = df['close'].rolling(window=long_window).mean()

@@ -1,0 +1,6 @@
+{
+    "fast_period": 12,
+    "slow_period": 205,
+    "test_flag": true,
+    "lost_perc": 0.11
+}
