@@ -3,20 +3,24 @@ import pandas as pd
 import pandas_ta as ta
 from lb_para_handler import ParameterHandler
 from live_data_fetch import LiveDataFetcher
+from lb_logger import log
 
 class CoreDMAStrategy:
-    def __init__(self, df, param_handler):
-        self.df = df
+    def __init__(self):
+        pass
+
+    def _get_paramter(self,param_handler):
         self.fast_period = param_handler.get_param('fast_period', 5)
         self.slow_period = param_handler.get_param('slow_period', 15)
         self.volume_threshold = param_handler.get_param('volume_threshold', 1.5)
         self.volume_window = param_handler.get_param('volume_window', 5)
+        self.fromcsv = param_handler.get_param('fromcsv',None)
+        self.tocsv = param_handler.get_param('tocsv',None)
 
-        self._calculate_indicators()
-        print(f'p fast {self.fast_period}')
-        print(f'p slow {self.slow_period}')
 
     def _calculate_indicators(self):
+        self.df = pd.read_csv(self.fromcsv)
+
         self.df['sma_fast'] = ta.sma(self.df['close'], length=self.fast_period)
         self.df['sma_slow'] = ta.sma(self.df['close'], length=self.slow_period)
         self.df['volume_ma'] = ta.sma(self.df['volume'], length=self.volume_window)
@@ -26,15 +30,26 @@ class CoreDMAStrategy:
 
         self.df['signal'] = self.df['sma_fast'] - self.df['sma_slow']
 
-    def generate_signals(self):
-        signals = []
-        for i in range(1, len(self.df)):
-            volume_increasing = self.df['volume'][i] > self.volume_threshold * self.df['volume_ma'][i]
-            if self.df['signal'][i] > 0 and self.df['signal'][i - 1] <= 0 and volume_increasing:
-                signals.append(('buy', self.df['timestamp'][i]))
-            elif self.df['signal'][i] < 0 and self.df['signal'][i - 1] >= 0 and volume_increasing:
-                signals.append(('sell', self.df['timestamp'][i]))
-        print(signals)
+    def generate_signals(self,param_handler):
+
+        try:
+            self._get_paramter(param_handler)
+            self._calculate_indicators()
+            signals = []
+
+            for i in range(1, len(self.df)):
+                volume_increasing = self.df['volume'][i] > self.volume_threshold * self.df['volume_ma'][i]
+                if self.df['signal'][i] > 0 and self.df['signal'][i - 1] <= 0 and volume_increasing:
+                    signals.append(('buy', self.df['timestamp'][i]))
+                elif self.df['signal'][i] < 0 and self.df['signal'][i - 1] >= 0 and volume_increasing:
+                    signals.append(('sell', self.df['timestamp'][i]))
+            log.info(signals)
+
+
+            if self.tocsv:
+                self.df.to_csv(self.tocsv,index=False)
+        except Exception as e:
+            log.error(f"Error generate signals: {e}")
         return signals
 
 
@@ -63,11 +78,13 @@ if __name__ == '__main__':
         'timeframe': '1h',
         'limit': 200
     }
-    data_param_handler = ParameterHandler(data_params)
-    bn_future_fetch = LiveDataFetcher(data_param_handler)
-    data = bn_future_fetch.fetch_data()
+    data_param_handler = ParameterHandler()
+    data_param_handler.load_from_json('configure/data_cfg.json')
+    bn_future_fetch = LiveDataFetcher()
+    data = bn_future_fetch.fetch_data(data_param_handler)
 
-    strategy = CoreDMAStrategy(data, param_handler)
-    signals = strategy.generate_signals()
-    print(signals)
+    # stra_param_handler = ParameterHandler()
+    data_param_handler.load_from_json('configure/stra_dma_cfg.json')
+    strategy = CoreDMAStrategy()
+    signals = strategy.generate_signals(data_param_handler)
 

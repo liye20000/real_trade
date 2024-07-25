@@ -1,0 +1,6 @@
+{
+    "symbol": "BTCUSDT",
+    "timeframe": "1h",
+    "limit": 200,
+    "tocsv": "data/db_btcusdt.csv"
+}

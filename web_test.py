@@ -1,4 +1,4 @@
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, Request
 import pandas as pd
 from datetime import datetime, timedelta
 import time
@@ -12,21 +12,9 @@ from live_data_fetch import LiveDataFetcher
 from lb_para_handler import ParameterHandler
 from fastapi.responses import HTMLResponse
 from plotly.subplots import make_subplots
-
+from lb_logger import log
 app = FastAPI()
-data_params = {
-        'symbol':'BTCUSDT',
-        'timeframe': '1h',
-        'limit': 200
-    }
-strategy_params = {
-    'fast_period': 11,
-    'slow_period': 21,
-    'volume_threshold': 1.5,
-    'volume_window': 5
-    }
-
-def create_candlestick_chart(df):
+def create_candlestick_chart():
     # fig = go.Figure(data=[go.Candlestick(x=df['timestamp'],
     #                                      open=df['open'],
     #                                      high=df['high'],
@@ -34,8 +22,10 @@ def create_candlestick_chart(df):
     #                                      close=df['close'])])
     
     # fig.update_layout(title='Candlestick Chart', xaxis_title='Date', yaxis_title='Price')
-    df['sma_fast'] = ta.sma(df['close'], length=11)
-    df['sma_slow'] = ta.sma(df['close'], length=21)
+
+    df = pd.read_csv('data/db_btcusdt.csv')
+    # df['sma_fast'] = ta.sma(df['close'], length=11)
+    # df['sma_slow'] = ta.sma(df['close'], length=21)
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.1,
                         row_heights=[0.7, 0.3])
 
@@ -49,7 +39,8 @@ def create_candlestick_chart(df):
 
     # 交易量
     fig.add_trace(go.Bar(x=df['timestamp'], y=df['volume'], name='Volume', marker=dict(color='blue', opacity=0.5)), row=2, col=1)
-
+    fig.add_trace(go.Scatter(x=df['timestamp'], y=df['volume_ma'], mode='lines', name='Volume SMA'), row=2, col=1)
+    
     # 双均线
     fig.add_trace(go.Scatter(x=df['timestamp'], y=df['sma_fast'], mode='lines', name='Fast SMA'), row=1, col=1)
     fig.add_trace(go.Scatter(x=df['timestamp'], y=df['sma_slow'], mode='lines', name='Slow SMA'), row=1, col=1)
@@ -71,35 +62,46 @@ def create_candlestick_chart(df):
     price = 65300
     action = 'buy'
     label = f"{action.capitalize()}<br>Time: {timestamp}<br>Volume: {volume}<br>Price: {price}"
-    fig.add_trace(go.Scatter(x=[timestamp], y=[price], mode='markers+text', marker=dict(color=color, size=10),
+    fig.add_trace(go.Scatter(x=[timestamp], y=[price], mode='markers+text', marker=dict(color=color, size=20),
                                  text=label, textposition='top center', name=action.capitalize()), row=1, col=1) 
     
+    # fig.update_layout(title='Candlestick Chart with Volume and Trading Signals',
+    #                   xaxis_title='Date',
+    #                   yaxis_title='Price')
     fig.update_layout(title='Candlestick Chart with Volume and Trading Signals',
                       xaxis_title='Date',
-                      yaxis_title='Price')
+                      yaxis_title='Price',
+                      template='plotly_dark',  # 使用Plotly自带的深色模板
+                      plot_bgcolor='black',  # 图表背景颜色
+                      paper_bgcolor='black',  # 纸张背景颜色
+                      font=dict(color='white'))  # 字体颜色
 
     return fig 
-data_param_handler = ParameterHandler(data_params)
 class DataProcessor:
     def __init__(self):
-        self.fetcher = LiveDataFetcher(data_param_handler)
+        self.data_param_handler = ParameterHandler()
+        self.fetcher = LiveDataFetcher()
+        self.strategy = CoreDMAStrategy()
         self.last_run = datetime.now() #- timedelta(seconds=10)
+
     
     async def fetch_and_process_data(self):
         # 检查是否到了新的时间段
         while True:
             current_time = datetime.now()
             if current_time - self.last_run >= timedelta(seconds=10):
-                # self.last_run = current_time
-                # # 获取数据
-                data = self.fetcher.fetch_data()
-                stra_param_handler = ParameterHandler(strategy_params)
-                self.strategy = CoreDMAStrategy(data, stra_param_handler)
-                signals = self.strategy.generate_signals()
-                print(signals)
+                
+                # 获取数据
+                self.data_param_handler.load_from_json('configure/data_cfg.json')
+                self.fetcher.fetch_data(self.data_param_handler)
+
+                # 策略计算 
+                self.data_param_handler.load_from_json('configure/stra_dma_cfg.json')
+                signals = self.strategy.generate_signals(self.data_param_handler)
+
                 # # 打印相关信息
-                # print(f"Data processed at {current_time}, results: {self.strategy.results}")
-                print(f'{current_time}It is just test sending')
+                # print(signals)
+                log.info(f'{current_time}It is just test sending')
                 self.last_run = current_time
             await asyncio.sleep(5)  # 每分钟检查一次
 
@@ -123,14 +125,30 @@ def get_strategy_results():
 def get_chart():
     # fetcher = LiveDataFetcher()
     # df = fetcher.fetch_data()
-    df = pd.read_csv('data/btc_usdt_test.csv')
-    fig = create_candlestick_chart(df)
-    return fig.to_html(full_html=False)
+    fig = create_candlestick_chart()
+    # return fig.to_html(full_html=False)
+    chart_html = fig.to_html(full_html=False)
+    html_content = f"""
+                    <html>
+                    <head>
+                        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+                    </head>
+                    <body>
+                        {chart_html}
+                    </body>
+                    </html>
+                    """
+    return HTMLResponse(content=html_content)
 
 @app.on_event("shutdown")
 def shutdown_event():
     print("Shutting down FastAPI server...")
     # 在这里可以添加清理资源的代码，比如关闭数据库连接等
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    log.error(f"Unhandled exception: {exc}")
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
 if __name__ == "__main__":
     import uvicorn
