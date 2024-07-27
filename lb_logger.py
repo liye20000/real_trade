@@ -2,12 +2,20 @@ from loguru import logger
 import os
 import sys
 
+# log_formats = {
+#     "DEBUG": "{time} - {level} - {message}",
+#     "INFO": "{message}",
+#     "WARNING": "{time} - {level} - {message}",
+#     "ERROR": "{time} - {level} - {message} - {file} - {function} - {line}",
+#     "CRITICAL": "{time} - {level} - {message} - {file} - {function} - {line}"
+# }
+
 log_formats = {
-    "DEBUG": "{time} - {level} - {message}",
-    "INFO": "{message}",
-    "WARNING": "{time} - {level} - {message}",
-    "ERROR": "{time} - {level} - {message} - {file} - {function} - {line}",
-    "CRITICAL": "{time} - {level} - {message} - {file} - {function} - {line}"
+    "DEBUG": "<cyan>{time}</cyan> - <level>{level}</level> - <level>{message}</level>",
+    "INFO": "<green>{message}</green>",
+    "WARNING": "<yellow>{time}</yellow> - <level>{level}</level> - <level>{message}</level>",
+    "ERROR": "<red>{time}</red> - <level>{level}</level> - <level>{message}</level> - <red>{file}</red> - <red>{function}</red> - <red>{line}</red>",
+    "CRITICAL": "<red>{time}</red> - <level>{level}</level> - <level>{message}</level> - <red>{file}</red> - <red>{function}</red> - <red>{line}</red>"
 }
 
 def setup_logger(log_dir="logs"):

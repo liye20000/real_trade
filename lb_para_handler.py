@@ -67,10 +67,19 @@ if __name__ == '__main__':
     # param_handler.load_from_ini('test/params.ini')
 
     # 获取参数
-    fast_period = param_handler.get_param('fast_period')
-    slow_period = param_handler.get_param('slow_period')
-    test_flag  = param_handler.get_param('test_flag')
-    lost_perc = param_handler.get_param('lost_perc')
-    test_add = param_handler.get_param('test_add', 20)
-    print(f'fast_period: {fast_period}, slow_period: {slow_period}, test_flag: {test_flag},lost_perc:{lost_perc}')
-    print(f'test_add:{test_add}')
+    # fast_period = param_handler.get_param('fast_period')
+    # slow_period = param_handler.get_param('slow_period')
+    # test_flag  = param_handler.get_param('test_flag')
+    # lost_perc = param_handler.get_param('lost_perc')
+    # test_add = param_handler.get_param('test_add', 20)
+    # print(f'fast_period: {fast_period}, slow_period: {slow_period}, test_flag: {test_flag},lost_perc:{lost_perc}')
+    # print(f'test_add:{test_add}')
+
+    param_handler.load_from_json('configure/user_cfg.json')
+    key = param_handler.get_param('key')
+    secret = param_handler.get_param('secret')
+
+    print(f'key:{key}')
+    print(f'secret:{secret}')
+
+
