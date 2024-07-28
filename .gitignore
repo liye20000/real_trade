@@ -5,3 +5,7 @@ web_test.pid
 *.pyc
 __pycache__/live_data_fetch.cpython-311.pyc
 __pycache__/rt_ma_strategy.cpython-311.pyc
+__pycache__/lb_para_handler.cpython-311.pyc
+__pycache__/lb_para_handler.cpython-311.pyc
+__pycache__/live_data_fetch.cpython-311.pyc
+data/ma_strategy.db

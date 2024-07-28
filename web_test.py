@@ -13,6 +13,8 @@ from lb_para_handler import ParameterHandler
 from fastapi.responses import HTMLResponse
 from plotly.subplots import make_subplots
 from lb_logger import log
+from rt_ma_db_handle import db_strategy
+
 app = FastAPI()
 def create_candlestick_chart():
     # fig = go.Figure(data=[go.Candlestick(x=df['timestamp'],
@@ -23,7 +25,8 @@ def create_candlestick_chart():
     
     # fig.update_layout(title='Candlestick Chart', xaxis_title='Date', yaxis_title='Price')
 
-    df = pd.read_csv('data/db_btcusdt.csv')
+    # df = pd.read_csv('data/db_btcusdt.csv')
+    df = db_strategy.fetch_data(limit = 50)
     # df['sma_fast'] = ta.sma(df['close'], length=11)
     # df['sma_slow'] = ta.sma(df['close'], length=21)
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.1,
@@ -56,15 +59,47 @@ def create_candlestick_chart():
     #                              text=label, textposition='top center', name=action.capitalize()), row=1, col=1)
 
     # action, timestamp, volume, price = signal
-    timestamp = '2024-07-19 08:00:00'
-    color = 'red'
-    volume = '100'
-    price = 65300
-    action = 'buy'
-    label = f"{action.capitalize()}<br>Time: {timestamp}<br>Volume: {volume}<br>Price: {price}"
-    fig.add_trace(go.Scatter(x=[timestamp], y=[price], mode='markers+text', marker=dict(color=color, size=20),
-                                 text=label, textposition='top center', name=action.capitalize()), row=1, col=1) 
+    # timestamp = '2024-07-19 08:00:00'
+    # color = 'red'
+    # volume = '100'
+    # price = 65300
+    # action = 'buy'
+    # label = f"{action.capitalize()}<br>Time: {timestamp}<br>Volume: {volume}<br>Price: {price}"
+    # fig.add_trace(go.Scatter(x=[timestamp], y=[price], mode='markers+text', marker=dict(color=color, size=20),
+    #                              text=label, textposition='top center', name=action.capitalize()), row=1, col=1) 
     
+    
+    # 遍历数据框，添加买入和卖出信号
+    for i, row in df.iterrows():
+        if row['buy']:
+            label = f"Buy<br>Time: {row['timestamp']}<br>Price: {row['buy']}"
+            fig.add_trace(go.Scatter(
+                x=[row['timestamp']],
+                y=[row['buy']],
+                mode='markers+text',
+                marker=dict(color='red', size=10),
+                text=label,
+                textposition='top center',
+                name='Buy',
+                legendgroup='Buy',  # 分组
+                showlegend=i == 0  # 只在第一次出现时显示图例
+            ), row=1, col=1)
+
+        if row['sell']:
+            label = f"Sell<br>Time: {row['timestamp']}<br>Price: {row['sell']}"
+            fig.add_trace(go.Scatter(
+                x=[row['timestamp']],
+                y=[row['sell']],
+                mode='markers+text',
+                marker=dict(color='green', size=10),
+                text=label,
+                textposition='top center',
+                name='Sell',
+                legendgroup='Sell',  # 分组
+                showlegend=i == 0  # 只在第一次出现时显示图例
+            ), row=1, col=1)
+
+
     # fig.update_layout(title='Candlestick Chart with Volume and Trading Signals',
     #                   xaxis_title='Date',
     #                   yaxis_title='Price')
@@ -98,6 +133,8 @@ class DataProcessor:
                 # 策略计算 
                 self.data_param_handler.load_from_json('configure/stra_dma_cfg.json')
                 signals = self.strategy.generate_signals(self.data_param_handler)
+
+                # TODO 执行买卖操作
 
                 # # 打印相关信息
                 # print(signals)

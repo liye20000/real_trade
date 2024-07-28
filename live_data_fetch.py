@@ -2,6 +2,7 @@ from binance.um_futures import UMFutures
 import pandas as pd
 from lb_para_handler import ParameterHandler
 from lb_logger import log
+from rt_ma_db_handle import db_strategy
 
 class LiveDataFetcher:
     def __init__(self): 
@@ -35,6 +36,7 @@ class LiveDataFetcher:
             # 保存数据到CSV文件
             if self.tocsv:
                 df.to_csv(self.tocsv, index=False)
+                db_strategy.insert_or_update_data(df)
         except Exception as e:
             log.error(f"Error fetch data: {e}")
         
