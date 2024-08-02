@@ -2,7 +2,7 @@ from binance.um_futures import UMFutures
 import pandas as pd
 from lb_para_handler import ParameterHandler
 from lb_logger import log
-from rt_ma_db_handle import db_strategy
+# from rt_ma_db_handle import db_strategy
 
 class LiveDataFetcher:
     def __init__(self): 
@@ -13,7 +13,7 @@ class LiveDataFetcher:
         self.symbol = param_handler.get_param('symbol','BTCUSDT')
         self.timeframe = param_handler.get_param('timeframe','1h')
         self.limit = param_handler.get_param('limit', 200)
-        self.tocsv = param_handler.get_param('tocsv')
+        self.tocsv = param_handler.get_param('tocsv', None)
  
     def fetch_data(self,param_handler):
         try:
@@ -32,11 +32,13 @@ class LiveDataFetcher:
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
 
             # 打印DataFrame
-            log.info(df)
+            log.info(df.tail(1))
             # 保存数据到CSV文件
             if self.tocsv:
                 df.to_csv(self.tocsv, index=False)
-                db_strategy.insert_or_update_data(df)
+            
+            # TODO: 在测试函数里面去掉这个代码，存储单独的类来处理
+            # db_strategy.insert_or_update_data(df) 
         except Exception as e:
             log.error(f"Error fetch data: {e}")
         
@@ -53,4 +55,6 @@ if __name__ == '__main__':
     param_handler.load_from_json('configure/data_cfg.json')
     bn_future_fetch = LiveDataFetcher()
     df = bn_future_fetch.fetch_data(param_handler)
+    log.info(df)
+    # db_strategy.insert_or_update_data(df)
 

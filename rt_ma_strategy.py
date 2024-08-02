@@ -20,47 +20,47 @@ class CoreDMAStrategy:
         self.tocsv = param_handler.get_param('tocsv',None)
 
 
-    def _calculate_indicators(self):
+    def _calculate_indicators(self,df):
         # self.df = pd.read_csv(self.fromcsv)
-        self.df = db_strategy.fetch_data()
 
-        self.df['sma_fast'] = ta.sma(self.df['close'], length=self.fast_period)
-        self.df['sma_slow'] = ta.sma(self.df['close'], length=self.slow_period)
-        self.df['volume_ma'] = ta.sma(self.df['volume'], length=self.volume_window)
+        df['sma_fast'] = ta.sma(df['close'], length=self.fast_period)
+        df['sma_slow'] = ta.sma(df['close'], length=self.slow_period)
+        df['volume_ma'] = ta.sma(df['volume'], length=self.volume_window)
         # Ensure the volume and volume_ma columns are of type float
-        self.df['volume'] = self.df['volume'].astype(float)
-        self.df['volume_ma'] = self.df['volume_ma'].astype(float)
+        df['volume'] = df['volume'].astype(float)
+        df['volume_ma'] =df['volume_ma'].astype(float)
 
-        self.df['signal'] = self.df['sma_fast'] - self.df['sma_slow']
+        df['signal'] = df['sma_fast'] - df['sma_slow']
+        return df
 
-    def generate_signals(self,param_handler):
+    def generate_signals(self,param_handler,df):
 
         try:
             self._get_paramter(param_handler)
-            self._calculate_indicators()
+            df = self._calculate_indicators(df)
             signals = []
-            self.df['buy'] = None
-            self.df['sell'] = None
+            df['buy'] = None
+            df['sell'] = None
 
-            for i in range(1, len(self.df)):
+            for i in range(1, len(df)):
                 # volume_increasing = self.df['volume'][i] > self.volume_threshold * self.df['volume_ma'][i]
                 volume_increasing = True # 为了后面读写信号测试用
-                if self.df['signal'][i] > 0 and self.df['signal'][i - 1] <= 0 and volume_increasing:
-                    self.df.loc[i,'buy'] = self.df['close'][i]
-                    signals.append(('buy', self.df['timestamp'][i]))
+                if df['signal'][i] > 0 and df['signal'][i - 1] <= 0 and volume_increasing:
+                    df.loc[i,'buy'] = df['close'][i]
+                    signals.append(('buy', df['timestamp'][i]))
 
-                elif self.df['signal'][i] < 0 and self.df['signal'][i - 1] >= 0 and volume_increasing:
-                    signals.append(('sell', self.df['timestamp'][i]))
-                    self.df.loc[i,'sell'] = self.df['close'][i]
+                elif df['signal'][i] < 0 and df['signal'][i - 1] >= 0 and volume_increasing:
+                    signals.append(('sell', df['timestamp'][i]))
+                    df.loc[i,'sell'] = df['close'][i]
             log.info(signals)
 
 
             if self.tocsv:
-                # self.df.to_csv(self.tocsv,index=False)
-                db_strategy.insert_or_update_data(self.df)
+                df.to_csv(self.tocsv,index=False)
+                # db_strategy.insert_or_update_data(self.df)
         except Exception as e:
             log.error(f"Error generate signals: {e}")
-        return signals
+        return df
 
 
 if __name__ == '__main__':
@@ -72,7 +72,6 @@ if __name__ == '__main__':
     # 'volume_window': 5
     # }
     # param_handler = ParameterHandler(params)
-    param_handler = ParameterHandler()
     # fast_period  = param_handler.get_param('fast_period',20)
     # print(f'fast_period:{fast_period}')
     # 示例数据
@@ -89,15 +88,27 @@ if __name__ == '__main__':
     #     'timeframe': '1h',
     #     'limit': 200
     # }
-    data_param_handler = ParameterHandler()
-    data_param_handler.load_from_json('configure/data_cfg.json')
+    param_handler = ParameterHandler()
+
+    param_handler.load_from_json('configure/data_cfg.json')
     bn_future_fetch = LiveDataFetcher()
-    data = bn_future_fetch.fetch_data(data_param_handler)
-
-    # stra_param_handler = ParameterHandler()
-    data_param_handler.load_from_json('configure/stra_dma_cfg.json')
-    strategy = CoreDMAStrategy()
-    signals = strategy.generate_signals(data_param_handler)
-
+    df = bn_future_fetch.fetch_data(param_handler)
+    # 更新刷写数据
+    db_strategy.insert_or_update_data(df)
     db_strategy.print_data()
+
+    param_handler.load_from_json('configure/stra_dma_cfg.json')
+    df = db_strategy.fetch_data()
+
+    strategy = CoreDMAStrategy()
+    result = strategy.generate_signals(param_handler,df)
+
+    db_strategy.insert_or_update_data(df)
+    db_strategy.print_data()
+
+
+
+
+    
+
 

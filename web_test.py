@@ -1,4 +1,4 @@
-from fastapi import FastAPI, BackgroundTasks, Request
+from fastapi import FastAPI, BackgroundTasks, Request,Query
 import pandas as pd
 from datetime import datetime, timedelta
 import time
@@ -16,7 +16,7 @@ from lb_logger import log
 from rt_ma_db_handle import db_strategy
 
 app = FastAPI()
-def create_candlestick_chart():
+def create_candlestick_chart(df):
     # fig = go.Figure(data=[go.Candlestick(x=df['timestamp'],
     #                                      open=df['open'],
     #                                      high=df['high'],
@@ -25,13 +25,16 @@ def create_candlestick_chart():
     
     # fig.update_layout(title='Candlestick Chart', xaxis_title='Date', yaxis_title='Price')
 
+    # log.debug("candle task 1")
     # df = pd.read_csv('data/db_btcusdt.csv')
-    df = db_strategy.fetch_data(limit = 50)
     # df['sma_fast'] = ta.sma(df['close'], length=11)
+    # df = db_strategy.fetch_data(limit = 50)
     # df['sma_slow'] = ta.sma(df['close'], length=21)
+    # log.debug("candle task 2")
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.1,
                         row_heights=[0.7, 0.3])
 
+    # log.debug("candle task 3")
     # K 线图
     fig.add_trace(go.Candlestick(x=df['timestamp'],
                                  open=df['open'],
@@ -40,6 +43,7 @@ def create_candlestick_chart():
                                  close=df['close'],
                                  name='Candlesticks'), row=1, col=1)
 
+    # log.debug("candle task 4")
     # 交易量
     fig.add_trace(go.Bar(x=df['timestamp'], y=df['volume'], name='Volume', marker=dict(color='blue', opacity=0.5)), row=2, col=1)
     fig.add_trace(go.Scatter(x=df['timestamp'], y=df['volume_ma'], mode='lines', name='Volume SMA'), row=2, col=1)
@@ -49,6 +53,7 @@ def create_candlestick_chart():
     fig.add_trace(go.Scatter(x=df['timestamp'], y=df['sma_slow'], mode='lines', name='Slow SMA'), row=1, col=1)
 
     
+    # log.debug("candle task 5")
 
     # 买卖信号测试用
     # for signal in signals:
@@ -100,6 +105,7 @@ def create_candlestick_chart():
             ), row=1, col=1)
 
 
+    # log.debug("candle task 6")
     # fig.update_layout(title='Candlestick Chart with Volume and Trading Signals',
     #                   xaxis_title='Date',
     #                   yaxis_title='Price')
@@ -111,14 +117,17 @@ def create_candlestick_chart():
                       paper_bgcolor='black',  # 纸张背景颜色
                       font=dict(color='white'))  # 字体颜色
 
+    # log.debug("candle task 7")
+
     return fig 
 class DataProcessor:
     def __init__(self):
         self.data_param_handler = ParameterHandler()
         self.fetcher = LiveDataFetcher()
         self.strategy = CoreDMAStrategy()
+        # 策略执行句柄
         self.last_run = datetime.now() #- timedelta(seconds=10)
-
+    
     
     async def fetch_and_process_data(self):
         # 检查是否到了新的时间段
@@ -162,20 +171,67 @@ def get_strategy_results():
 def get_chart():
     # fetcher = LiveDataFetcher()
     # df = fetcher.fetch_data()
-    fig = create_candlestick_chart()
+    
+    df = db_strategy.fetch_data(limit = 50)
+    fig = create_candlestick_chart(df)
     # return fig.to_html(full_html=False)
-    chart_html = fig.to_html(full_html=False)
+    fig_json = fig.to_json()
+    # chart_html = fig.to_html(full_html=False)
+    # html_content = f"""
+    #                 <html>
+    #                 <head>
+    #                     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    #                 </head>
+    #                 <body>
+    #                     {chart_html}
+    #                 </body>
+    #                 </html>
+    #                 """
     html_content = f"""
-                    <html>
-                    <head>
-                        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-                    </head>
-                    <body>
-                        {chart_html}
-                    </body>
-                    </html>
-                    """
+        <html>
+        <head>
+            <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+            <style>
+                body, html {{
+                    height: 100%;
+                    margin: 0;
+                }}
+                #chart {{
+                    width: 100%;
+                    height: 100%;
+                }}
+            </style>
+            <script>
+                document.addEventListener("DOMContentLoaded", function() {{
+                    var data = {fig_json};
+                    Plotly.newPlot('chart', data.data, data.layout, {{responsive: true}});
+                    
+                    // 实现图表数据刷新功能
+                    $('#refresh').click(function() {{
+                        $.get("/chart/data?offset=50", function(new_data) {{
+                            var new_data_json = JSON.parse(new_data);
+                            Plotly.react('chart', new_data_json.data, new_data_json.layout);
+                        }});
+                    }});
+                }});
+            </script>
+        </head>
+        <body>
+            <div id="chart"></div>
+            <button id="refresh" style="position:fixed;bottom:10px;right:10px;">Refresh Data</button>
+        </body>
+        </html>
+        """
+    # TODO 多设计几个按钮，包括向前，向后，要相应缩小的请求，当缩小放大的时候，也可以响应 响应内容TBD
+    # log.debug("candle task 8")
+    # log.info(html_content)
     return HTMLResponse(content=html_content)
+@app.get("/chart/data")
+def get_chart_data(offset: int = Query(0)):
+    df = db_strategy.fetch_data(limit=50, offset=offset)  # 获取上一批数据
+    fig = create_candlestick_chart(df)
+    return fig.to_json()
 
 @app.on_event("shutdown")
 def shutdown_event():

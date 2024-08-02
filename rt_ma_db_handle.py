@@ -73,7 +73,7 @@ class StrategyDatabase:
         except Exception as e:
             log.error(f"Error inserting/updating data: {e}")
 
-    def fetch_data(self, limit=None, start_time=None, end_time=None):
+    def fetch_data(self, limit=None, start_time=None, end_time=None, offset = 0):
         try:
             conn = sqlite3.connect(self.db_name)
             query = "SELECT * FROM strategy_data"
@@ -86,14 +86,13 @@ class StrategyDatabase:
                 query += " WHERE " + " AND ".join(conditions)
             query += " ORDER BY timestamp"
             if limit:
-                query += f" LIMIT {limit}"
+                query += f" LIMIT {limit} OFFSET {offset}"
             df = pd.read_sql(query, conn)
             conn.close()
             return df
         except Exception as e:
             log.error(f"Error fetching data: {e}")
             return pd.DataFrame()
-
     def delete_data(self, start_time=None, end_time=None, limit=None):
         try:
             conn = sqlite3.connect(self.db_name)
