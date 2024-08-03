@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traders</title>
+    <link rel="stylesheet" href="/frontend/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Traders</h1>
+        <div class="scrollable">
+            <table id="tradersTable">
+                <thead>
+                    <tr>
+                        <th>策略名</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        async function fetchTraders() {
+            const response = await fetch('/api/traders');
+            const traders = await response.json();
+            const tbody = document.querySelector('#tradersTable tbody');
+            tbody.innerHTML = ''; // 清空现有的行
+
+            traders.forEach(trader => {
+                const tr = document.createElement('tr');
+                
+                const nameTd = document.createElement('td');
+                const link = document.createElement('a');
+                link.href = `/frontend/strategy_page.html?trader_id=${trader.id}`;
+                link.textContent = trader.name;
+                nameTd.appendChild(link);
+                tr.appendChild(nameTd);
+
+                const statusTd = document.createElement('td');
+                const statusLabel = document.createElement('span');
+                const switchInput = document.createElement('input');
+                switchInput.type = 'checkbox';
+                switchInput.checked = trader.status;
+                switchInput.className = 'switch';
+                const switchLabel = document.createElement('label');
+                switchLabel.className = 'switch-label';
+                switchLabel.appendChild(switchInput);
+                const slider = document.createElement('span');
+                slider.className = 'slider round';
+                switchLabel.appendChild(slider);
+                statusLabel.textContent = switchInput.checked ? '启动' : '关闭';
+                switchInput.addEventListener('change', async () => {
+                    const response = await fetch(`/api/trader/${trader.id}/set_tradeswitch`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ state: switchInput.checked })
+                    });
+
+                    if (response.ok) {
+                        statusLabel.textContent = switchInput.checked ? '启动' : '关闭';
+                    } else {
+                        alert('Failed to update status');
+                    }
+                });
+
+                statusTd.appendChild(switchLabel);
+                statusTd.appendChild(statusLabel);
+                tr.appendChild(statusTd);
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchTraders();
+        });
+    </script>
+</body>
+</html>

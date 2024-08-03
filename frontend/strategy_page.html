@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strategy Page</title>
+    <link rel="stylesheet" href="/frontend/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Strategy Details</h1>
+        <div id="info">
+            <h2>Trader Information</h2>
+            <pre id="traderInfo"></pre>
+            <h2>Strategy Information</h2>
+            <pre id="strategyInfo"></pre>
+        </div>
+        <div class="links">
+            <h3>Links</h3>
+            <ul>
+                <li><a id="strategyDataLink" href="#">Strategy Data</a></li>
+                <li><a id="tradeDataLink" href="#">Trade Data</a></li>
+                <li><a id="tradeGraphLink" href="#">Trade Graph</a></li>
+            </ul>
+        </div>
+    </div>
+    <script>
+        async function fetchStrategyDetails(traderId) {
+            const traderInfoResponse = await fetch(`/api/trader/${traderId}/info`);
+            const traderInfo = await traderInfoResponse.json();
+            const traderInfoPre = document.getElementById('traderInfo');
+            traderInfoPre.textContent = JSON.stringify(traderInfo, null, 2);
+
+            const strategyInfoResponse = await fetch(`/api/trader/${traderId}/strategy`);
+            const strategyInfo = await strategyInfoResponse.json();
+            const strategyInfoPre = document.getElementById('strategyInfo');
+            strategyInfoPre.textContent = JSON.stringify(strategyInfo, null, 2);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const traderId = urlParams.get('trader_id');
+            //#0?trader_id=0 
+            if (traderId) {
+                fetchStrategyDetails(traderId);
+                document.getElementById('strategyDataLink').href = `/strategy_data/${traderId}?trader_id=${traderId}`;
+                document.getElementById('tradeDataLink').href = `/trading_data/${traderId}?trader_id=${traderId}`;
+                document.getElementById('tradeGraphLink').href = `/frontend/trade_graph.html?trader_id=${traderId}`; // 预留图形页面链接
+            } else {
+                alert('Trader ID is missing from URL.');
+            }
+        });
+    </script>
+</body>
+</html>

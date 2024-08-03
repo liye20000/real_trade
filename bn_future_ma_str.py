@@ -13,7 +13,7 @@ from live_data_fetch import LiveDataFetcher
 from bn_um_future import Bn_um_future
 class bn_future_ma_trader:
 
-    def __init__(self):
+    def __init__(self,name=None):
         params = {
                 'fetcher_cfg':  'configure/data_cfg.json',
                 'strager_cfg':  'configure/stra_dma_cfg.json',
@@ -21,6 +21,7 @@ class bn_future_ma_trader:
                 'trader_cfg':   'configure/user_cfg.json',
                 'trader_db':    'data/trading.db'
                  }
+        self.name = name
         self.fetcher = LiveDataFetcher(params['fetcher_cfg'])
         self.strager = CoreDMAStrategy(params['strager_cfg'])
         self.storer = StrategyDatabase(params['strager_db'])
@@ -32,6 +33,10 @@ class bn_future_ma_trader:
     
     def set_tradeswitch(self, switch):
         self.tradeswitch = switch
+        self.logger.info(f"set swiitch {switch}")
+        return self.tradeswitch
+    
+    def get_traderswitch(self):
         return self.tradeswitch
 
     def process_stategy(self):
@@ -64,15 +69,28 @@ class bn_future_ma_trader:
     def show_strategyinfo(self):
         return
     
+    def show_strategydata(self):
+        df = self.storer.query_data()
+        df = df.fillna(0)  # 将 NaN 值替换为 0，或根据需要替换为其他值
+        df = df.replace([float('inf'), float('-inf')], 0)  # 将无穷大替换为 0，或根据需要替换为其他值
+        return df.to_dict(orient='records')
+
     def show_tradingdata(self):
         df = self.trader.trading_db.fetch_trades_as_dataframe()
+        df = df.fillna(0)  # 将 NaN 值替换为 0，或根据需要替换为其他值
+        df = df.replace([float('inf'), float('-inf')], 0)  # 将无穷大替换为 0，或根据需要替换为其他值
         return df.to_dict(orient='records')
 
 if __name__ == "__main__":
     
     test_trader = bn_future_ma_trader()
 
-    test_trader.process_stategy()
-    
+    # test_trader.process_stategy()
+
+    dict = test_trader.show_strategydata()
+    print(dict)
+
+    # test_trader.sho
+     
 
 
