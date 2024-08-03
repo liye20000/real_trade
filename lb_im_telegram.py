@@ -32,6 +32,7 @@ class TelegramNotifier:
             print(f"An unexpected error occurred: {e}")
         return None
 
+    # https://core.telegram.org/bots/api#markdownv2-style
     def send_markdown_message(self, text):
         markdown_message = self.escape_markdown(text)
         return self.send_message(markdown_message, parse_mode="MarkdownV2")
@@ -40,7 +41,8 @@ class TelegramNotifier:
         # Telegram MarkdownV2 requires the following characters to be escaped
         escape_chars = r'_*\[\]()~`>#+-=|{}.!'
         return ''.join(['\\' + char if char in escape_chars else char for char in text])
-
+    
+    # https://core.telegram.org/bots/api#html-style
     def send_html_message(self, text):
         html_message = f"<b>{text}</b>"
         return self.send_message(html_message, parse_mode="HTML")

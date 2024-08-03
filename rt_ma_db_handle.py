@@ -6,9 +6,11 @@ from lb_logger import log
 class StrategyDatabase:
     def __init__(self, db_name='data/ma_strategy.db'):
         self.db_name = db_name
-        self.create_strategy_table()
+        self.logger = log
+        self._create_strategy_table()
+    
 
-    def create_strategy_table(self):
+    def _create_strategy_table(self):
         if not os.path.exists(os.path.dirname(self.db_name)):
             os.makedirs(os.path.dirname(self.db_name))
         try:
@@ -32,9 +34,9 @@ class StrategyDatabase:
             ''')
             conn.commit()
             conn.close()
-            log.info("Table 'strategy_data' created successfully.")
+            self.logger.info("Table 'strategy_data' created successfully.")
         except Exception as e:
-            log.error(f"Error creating table: {e}")
+            self.logger.error(f"Error creating table: {e}")
 
     def insert_or_update_data(self, df):
         try:
@@ -69,11 +71,11 @@ class StrategyDatabase:
                 ''', (row['timestamp'], row['open'], row['high'], row['low'], row['close'], row['volume'], row['sma_fast'], row['sma_slow'], row['volume_ma'], row['signal'], row['buy'], row['sell']))
             conn.commit()
             conn.close()
-            log.info("Data inserted/updated successfully.")
+            self.logger.info("Data inserted/updated successfully.")
         except Exception as e:
-            log.error(f"Error inserting/updating data: {e}")
+            self.logger.error(f"Error inserting/updating data: {e}")
 
-    def fetch_data(self, limit=None, start_time=None, end_time=None, offset = 0):
+    def query_data(self, limit=None, start_time=None, end_time=None, offset = 0):
         try:
             conn = sqlite3.connect(self.db_name)
             query = "SELECT * FROM strategy_data"
@@ -91,7 +93,7 @@ class StrategyDatabase:
             conn.close()
             return df
         except Exception as e:
-            log.error(f"Error fetching data: {e}")
+            self.logger.error(f"Error fetching data: {e}")
             return pd.DataFrame()
     def delete_data(self, start_time=None, end_time=None, limit=None):
         try:
@@ -112,18 +114,17 @@ class StrategyDatabase:
             cursor.execute(query)
             conn.commit()
             conn.close()
-            log.info("Data deleted successfully.")
+            self.logger.info("Data deleted successfully.")
         except Exception as e:
-            log.error(f"Error deleting data: {e}")
+            self.logger.error(f"Error deleting data: {e}")
 
-    def print_data(self):
-        df = self.fetch_data()
-        print(df)
+def db_process_test_func():
+    db_strategy = StrategyDatabase(db_name='test/ma_strategy.db')
 
-# 全局变量
-db_strategy = StrategyDatabase(db_name='data/ma_strategy.db')
-
-if __name__ == '__main__':
+    def print_db(number = None):
+        data = db_strategy.query_data(limit=number)
+        print(data)
+    
     # 测试数据
     initial_data = {
         'timestamp': ['2024-07-27 12:00:00', '2024-07-27 12:05:00', '2024-07-27 12:10:00'],
@@ -154,32 +155,66 @@ if __name__ == '__main__':
 
     # 插入基础数据
     db_strategy.insert_or_update_data(initial_df)
-    db_strategy.print_data()
+    print_db()
 
     # 插入策略数据
     db_strategy.insert_or_update_data(strategy_df)
-    db_strategy.print_data()
+    print_db()
+    
 
-    # 读取数据
-    data = db_strategy.fetch_data()
-    print(data)
-
-    # 读取部分数据（最新2条）
-    data = db_strategy.fetch_data(limit=2)
+    # 读取部分数据（2条）
+    data = db_strategy.query_data(limit=2)
     print(data)
 
     # 根据时间读取数据（某时间点后的数据）
-    data = db_strategy.fetch_data(start_time='2024-07-27 12:05:00')
+    data = db_strategy.query_data(start_time='2024-07-27 12:05:00')
     print(data)
 
     # 擦除数据（某时间点前的数据）
     db_strategy.delete_data(end_time='2024-07-27 12:05:00')
+    print_db()
 
     # 擦除数据（最早的1条数据）
     db_strategy.delete_data(limit=1)
-
     # 打印所有数据
-    db_strategy.print_data()
-
+    print_db()
+    
+    db_strategy.insert_or_update_data(strategy_df)
+    print_db()
     db_strategy.delete_data()
-    db_strategy.print_data()
+    print_db()
+# 全局变量
+
+def fetch_caculate_and_store_test():
+    # 测试代码
+    from live_data_fetch import LiveDataFetcher
+    from rt_ma_strategy import CoreDMAStrategy
+    test_para = {
+        'fetcher_cfg': 'configure/data_cfg.json',
+        'strager_cfg': 'configure/stra_dma_cfg.json',
+        'strager_db':  'test/ma_strategy.db'
+    }
+    bn_future_fetch = LiveDataFetcher(test_para['fetcher_cfg'])
+    strategy = CoreDMAStrategy(test_para['strager_cfg'])
+    db_strategy = StrategyDatabase(test_para['strager_db'])
+    
+    
+    df = bn_future_fetch.fetch_data()
+    db_strategy.insert_or_update_data(df)
+
+    df = db_strategy.query_data()
+    df = strategy.generate_signals(df)
+    db_strategy.insert_or_update_data(df)
+
+    df =db_strategy.query_data()
+
+    # 为了让df被打印不截断:
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', None)
+    pd.set_option('display.max_colwidth', None)
+
+    print(df)
+if __name__ == '__main__':
+#    fetch_caculate_and_store_test()
+    db_process_test_func()

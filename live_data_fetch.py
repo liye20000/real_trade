@@ -2,22 +2,24 @@ from binance.um_futures import UMFutures
 import pandas as pd
 from lb_para_handler import ParameterHandler
 from lb_logger import log
-# from rt_ma_db_handle import db_strategy
 
 class LiveDataFetcher:
-    def __init__(self): 
+    def __init__(self,cfg_json): 
         self.fech_handler = UMFutures()
+        self.param_handler = ParameterHandler()
+        self.cfg = cfg_json
+        self.logger = log
     
-    def _get_paramter(self, param_handler):
+    def _get_paramter(self):
         #后续可以考虑加上参数： 交易所， 交易类型：现货，币本位，U本位合约等
-        self.symbol = param_handler.get_param('symbol','BTCUSDT')
-        self.timeframe = param_handler.get_param('timeframe','1h')
-        self.limit = param_handler.get_param('limit', 200)
-        self.tocsv = param_handler.get_param('tocsv', None)
+        self.param_handler.load_from_json(self.cfg)
+        self.symbol = self.param_handler.get_param('symbol','BTCUSDT')
+        self.timeframe = self.param_handler.get_param('timeframe','1h')
+        self.limit = self.param_handler.get_param('limit', 200)
  
-    def fetch_data(self,param_handler):
+    def fetch_data(self):
         try:
-            self._get_paramter(param_handler)
+            self._get_paramter()
             klines = self.fech_handler.klines(self.symbol, self.timeframe, limit = self.limit)
             # 将数据转换成Pandas DataFrame
             df = pd.DataFrame(klines, columns=[
@@ -31,30 +33,17 @@ class LiveDataFetcher:
             # 将时间戳转换成可读时间
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
 
-            # 打印DataFrame
-            log.info(df.tail(1))
-            # 保存数据到CSV文件
-            if self.tocsv:
-                df.to_csv(self.tocsv, index=False)
-            
-            # TODO: 在测试函数里面去掉这个代码，存储单独的类来处理
-            # db_strategy.insert_or_update_data(df) 
         except Exception as e:
-            log.error(f"Error fetch data: {e}")
-        
+            self.logger.error(f"Error fetch data: {e}")
         return df
 
 if __name__ == '__main__':
-    params = {
-        'symbol':'BTCUSDT',
-        'timeframe': '1h',
-        'limit': 200
-    }
 
-    param_handler = ParameterHandler()
-    param_handler.load_from_json('configure/data_cfg.json')
-    bn_future_fetch = LiveDataFetcher()
-    df = bn_future_fetch.fetch_data(param_handler)
-    log.info(df)
+    test_para = {
+        'fetcher_cfg': 'configure/data_cfg.json'
+    } 
+    bn_future_fetch = LiveDataFetcher(test_para['fetcher_cfg'])
+    df = bn_future_fetch.fetch_data()
+    print(df)
     # db_strategy.insert_or_update_data(df)
 

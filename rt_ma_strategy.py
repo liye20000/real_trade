@@ -2,26 +2,23 @@
 import pandas as pd
 import pandas_ta as ta
 from lb_para_handler import ParameterHandler
-from live_data_fetch import LiveDataFetcher
 from lb_logger import log
-import numpy as np
-from rt_ma_db_handle import db_strategy
 
 class CoreDMAStrategy:
-    def __init__(self):
-        pass
+    def __init__(self,cfg_json):
+        self.param_handler = ParameterHandler()
+        self.cfg = cfg_json
+        self.logger = log
 
-    def _get_paramter(self,param_handler):
-        self.fast_period = param_handler.get_param('fast_period', 5)
-        self.slow_period = param_handler.get_param('slow_period', 15)
-        self.volume_threshold = param_handler.get_param('volume_threshold', 1.5)
-        self.volume_window = param_handler.get_param('volume_window', 5)
-        self.fromcsv = param_handler.get_param('fromcsv',None)
-        self.tocsv = param_handler.get_param('tocsv',None)
+    def _get_paramter(self):
+        self.param_handler.load_from_json(self.cfg)
+        self.fast_period = self.param_handler.get_param('fast_period', 5)
+        self.slow_period = self.param_handler.get_param('slow_period', 20)
+        self.volume_threshold = self.param_handler.get_param('volume_threshold', 1.5)
+        self.volume_window = self.param_handler.get_param('volume_window', 5)
 
 
     def _calculate_indicators(self,df):
-        # self.df = pd.read_csv(self.fromcsv)
 
         df['sma_fast'] = ta.sma(df['close'], length=self.fast_period)
         df['sma_slow'] = ta.sma(df['close'], length=self.slow_period)
@@ -33,10 +30,10 @@ class CoreDMAStrategy:
         df['signal'] = df['sma_fast'] - df['sma_slow']
         return df
 
-    def generate_signals(self,param_handler,df):
+    def generate_signals(self,df):
 
         try:
-            self._get_paramter(param_handler)
+            self._get_paramter()
             df = self._calculate_indicators(df)
             signals = []
             df['buy'] = None
@@ -52,59 +49,35 @@ class CoreDMAStrategy:
                 elif df['signal'][i] < 0 and df['signal'][i - 1] >= 0 and volume_increasing:
                     signals.append(('sell', df['timestamp'][i]))
                     df.loc[i,'sell'] = df['close'][i]
-            log.info(signals)
+            self.logger.info(signals)
 
-
-            if self.tocsv:
-                df.to_csv(self.tocsv,index=False)
-                # db_strategy.insert_or_update_data(self.df)
         except Exception as e:
-            log.error(f"Error generate signals: {e}")
+            self.logger.error(f"Error generate signals: {e}")
         return df
 
 
 if __name__ == '__main__':
-    # 示例参数字典
-    # params = {
-    # 'fast_period': 11,
-    # 'slow_period': 21,
-    # 'volume_threshold': 1.5,
-    # 'volume_window': 5
-    # }
-    # param_handler = ParameterHandler(params)
-    # fast_period  = param_handler.get_param('fast_period',20)
-    # print(f'fast_period:{fast_period}')
-    # 示例数据
-    # data = pd.DataFrame({
-    #     'close': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    #     'volume': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-    # })
 
-    # test
-    # data = pd.read_csv('data/btc_usdt_test.csv')
-    # print(data)
-    # data_params = {
-    #     'symbol':'BTCUSDT',
-    #     'timeframe': '1h',
-    #     'limit': 200
-    # }
-    param_handler = ParameterHandler()
+    # 测试代码
+    from live_data_fetch import LiveDataFetcher
+    test_para = {
+        'fetcher_cfg': 'configure/data_cfg.json',
+        'strager_cfg': 'configure/stra_dma_cfg.json'
+    }
+    bn_future_fetch = LiveDataFetcher(test_para['fetcher_cfg'])
+    strategy = CoreDMAStrategy(test_para['strager_cfg'])
+    
+    df = bn_future_fetch.fetch_data()
+    print(df)
+    df = strategy.generate_signals(df)
 
-    param_handler.load_from_json('configure/data_cfg.json')
-    bn_future_fetch = LiveDataFetcher()
-    df = bn_future_fetch.fetch_data(param_handler)
-    # 更新刷写数据
-    db_strategy.insert_or_update_data(df)
-    db_strategy.print_data()
+    # 为了让df被打印不截断
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', None)
+    pd.set_option('display.max_colwidth', None)
 
-    param_handler.load_from_json('configure/stra_dma_cfg.json')
-    df = db_strategy.fetch_data()
-
-    strategy = CoreDMAStrategy()
-    result = strategy.generate_signals(param_handler,df)
-
-    db_strategy.insert_or_update_data(df)
-    db_strategy.print_data()
+    print(df)
 
 
 

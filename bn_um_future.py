@@ -1,7 +1,7 @@
 from binance.um_futures import UMFutures
 import requests
 import logging
-from lb_logger import log as loguru_logger
+from lb_logger import log
 import pandas as pd
 import json
 from lb_para_handler import ParameterHandler
@@ -12,30 +12,30 @@ from lb_im_telegram import TelegramNotifier
 
 
 class Bn_um_future(UMFutures):
-    def __init__(self, param_handler, use_loguru=True):
-        
-        secret = param_handler.get_param('secret',None)
-        key = param_handler.get_param('key',None)
+    def __init__(self, cfg_json, db_name):
+
+        self.param_handler = ParameterHandler()
+        self.param_handler.load_from_json(cfg_json)
+
+        secret = self.param_handler.get_param('secret',None)
+        key = self.param_handler.get_param('key',None)
         super().__init__(key, secret)
 
-        self.symbol = param_handler.get_param('symbol','BTCUSDT')
-        self.positionside = param_handler.get_param('positionSide','BOTH')
-        self.USDTquantity = param_handler.get_param('USDTquantity',200)
-        self.leverage = param_handler.get_param('leverage',100)
+        self.symbol = self.param_handler.get_param('symbol','BTCUSDT')
+        self.positionside = self.param_handler.get_param('positionSide','BOTH')
+        self.USDTquantity = self.param_handler.get_param('USDTquantity',200)
+        self.leverage = self.param_handler.get_param('leverage',100)
 
-        self.trading_db = TradeDatabase(db_name='data/trading.db')
+        self.trading_db = TradeDatabase(db_name)
         self.im_notifier = TelegramNotifier()
 
-        # print(f'symbol:{self.symbol}')
-        # print(f'positionside:{self.positionside}')
-        # print(f'USDTquantity:{self.USDTquantity}')
-        # print(f'leverage:{self.leverage}')
+        self.logger = log
 
-        if not use_loguru:
-            self.logger = logging.getLogger(__name__)
-            logging.basicConfig(level=logging.INFO)
-        else:
-            self.logger = loguru_logger
+        print(f'symbol:{self.symbol}')
+        print(f'positionside:{self.positionside}')
+        print(f'USDTquantity:{self.USDTquantity}')
+        print(f'leverage:{self.leverage}')
+ 
 
     def v3_account(self, **kwargs):
         url_path = "/fapi/v3/account"
@@ -89,7 +89,7 @@ class Bn_um_future(UMFutures):
 
     def convert_account_info(self, account_data, langCn = True):
         if not account_data:
-            print("No account information to display.")
+            self.logger.info("No account information to display.")
             return None, None, None
         account_data = self._filter_non_zero_info(account_data)
         # General account information
@@ -326,10 +326,10 @@ class Bn_um_future(UMFutures):
         self.trading_db.insert_trade(symbol = self.symbol,
                                              side = trade_side,
                                              position_side=self.positionside,
-                                             trade_volume= trade_quantity, #TODO: 后续改成从订单中获取数量
-                                             trade_price= trade_price, #TODO: 后续改成从确认订单中获取交易价格
-                                             order_id= '123456', #TODO: 改成 trade_order_id
-                                             execution_time= now.strftime('%Y-%m-%d %H:%M:%S') )#TODO: 改成订单时间
+                                             trade_volume= trade_quantity, 
+                                             trade_price= trade_price, 
+                                             order_id= '123456',
+                                             execution_time= now.strftime('%Y-%m-%d %H:%M:%S') )
         self.trading_db.print_trades_as_dataframe()
         # 发送IM消息 
         self.im_notifier.send_trade_info(symbol=self.symbol,
@@ -346,6 +346,7 @@ class Bn_um_future(UMFutures):
         self.logger.info("Start Process trade")
         try:
             # current_time = datetime.now()
+            # TODO: 测试后改成真正的时间
             current_time = datetime.strptime("2024-07-28 18:00:00", '%Y-%m-%d %H:%M:%S')
             time_window_start = current_time - timedelta(minutes=60)
             time_window_end = current_time + timedelta(minutes=60)
@@ -382,9 +383,15 @@ if __name__ == '__main__':
     param_handler = ParameterHandler()
     param_handler.load_from_json('configure/user_cfg.json')
 
-    account = Bn_um_future(param_handler, use_loguru=True)
+    test_para = {
+            'trader_cfg': 'configure/user_cfg.json',
+            'trader_db':  'test/trader_test.db'
+    }
+    account = Bn_um_future(test_para['trader_cfg'], test_para['trader_db'])
     # account._perform_tradingorder('SELL', 64254.03)
-    account._test_perform_order('BUY', 64254.03)
+    # account._test_perform_order('BUY', 64254.03)
+    account_info  = account.v3_account()
+    account.convert_account_info(account_info)
 
     # # Get v3 account info
     # account_info = account.v3_account(recvWindow = 6000)

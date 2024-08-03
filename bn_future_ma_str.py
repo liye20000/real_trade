@@ -7,19 +7,26 @@
 # Processer 后台策略执行函数
 
 from lb_logger import log
-from rt_ma_db_handle import db_strategy
+from rt_ma_db_handle import StrategyDatabase
 from rt_ma_strategy import CoreDMAStrategy
 from live_data_fetch import LiveDataFetcher
-from lb_para_handler import ParameterHandler
 from bn_um_future import Bn_um_future
 class bn_future_ma_trader:
+
     def __init__(self):
-        self.fetcher = LiveDataFetcher()
-        self.strager = CoreDMAStrategy()
-        self.storer = db_strategy
-        self.param_handler = ParameterHandler()
-        self.param_handler.load_from_json('configure/user_cfg.json')
-        self.trader = Bn_um_future(param_handler=self.param_handler)
+        params = {
+                'fetcher_cfg':  'configure/data_cfg.json',
+                'strager_cfg':  'configure/stra_dma_cfg.json',
+                'strager_db':   'data/ma_stragy.db',
+                'trader_cfg':   'configure/user_cfg.json',
+                'trader_db':    'data/trading.db'
+                 }
+        self.fetcher = LiveDataFetcher(params['fetcher_cfg'])
+        self.strager = CoreDMAStrategy(params['strager_cfg'])
+        self.storer = StrategyDatabase(params['strager_db'])
+        self.trader = Bn_um_future( cfg_json=params['trader_cfg'], 
+                                    db_name=params['trader_db'])
+        
         self.tradeswitch = True
         self.logger = log
     
@@ -27,24 +34,21 @@ class bn_future_ma_trader:
         self.tradeswitch = switch
         return self.tradeswitch
 
-    def process_stragy(self):
+    def process_stategy(self):
         try:
             if self.tradeswitch==True :
                 #获取数据
-                self.param_handler.load_from_json('configure/data_cfg.json')
-                df = self.fetcher.fetch_data(self.param_handler)
+                df = self.fetcher.fetch_data()
                 self.storer.insert_or_update_data(df)
-                # self.storer.print_data()
                 
                 #策略处理，数据更新
-                df = self.storer.fetch_data()
-                self.param_handler.load_from_json('configure/stra_dma_cfg.json')
-                self.strager.generate_signals(self.param_handler,df)
+                df = self.storer.query_data()
+                df = self.strager.generate_signals(df)
                 self.storer.insert_or_update_data(df)
                 # self.storer.print_data()
 
                 #交易处理
-                df = self.storer.fetch_data()
+                df = self.storer.query_data()
                 self.trader.process_trade(df)
                 
         except Exception as e:            
@@ -59,12 +63,16 @@ class bn_future_ma_trader:
     
     def show_strategyinfo(self):
         return
+    
+    def show_tradingdata(self):
+        df = self.trader.trading_db.fetch_trades_as_dataframe()
+        return df.to_dict(orient='records')
 
 if __name__ == "__main__":
     
     test_trader = bn_future_ma_trader()
 
-    test_trader.process_stragy()
+    test_trader.process_stategy()
     
 
 

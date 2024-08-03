@@ -2,7 +2,5 @@
     "fast_period": 11, 
     "slow_period": 21,
     "volume_threshold": 1.5,
-    "volume_window":5,
-    "fromcsv": "data/db_btcusdt.csv",
-    "tocsv": "data/db_btcusdt.csv"
+    "volume_window":5  
 }

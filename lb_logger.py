@@ -19,11 +19,12 @@ log_formats = {
 }
 
 def setup_logger(log_dir="logs"):
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
 
     logger.remove()
 
+    # # 预留代码，未来如果需要分级存储log，可参考
+    # if not os.path.exists(log_dir):
+    #     os.makedirs(log_dir)
     # logger.add(os.path.join(log_dir, "debug.log"), level="DEBUG", format=log_formats["DEBUG"])
     # logger.add(os.path.join(log_dir, "info.log"), level="INFO", format=log_formats["INFO"])
     # logger.add(os.path.join(log_dir, "warning.log"), level="WARNING", format=log_formats["WARNING"])
@@ -40,6 +41,7 @@ setup_logger()
 
 log = logger
 
+# 测试代码
 if __name__ == '__main__':
     log.debug("Debug Test")
     log.info("Info Test")

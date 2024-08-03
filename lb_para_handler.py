@@ -56,30 +56,30 @@ if __name__ == '__main__':
     # 创建参数处理器实例
     param_handler = ParameterHandler(default_params)
 
-    # 从字典加载参数
+    # 直接从字典加载参数
     # param_handler.load_from_dict({'fast_period': 10, 'slow_period': 20})
-    param_handler.load_from_dict(update_params)
 
-    # 从 JSON 文件加载参数
-    # param_handler.load_from_json('test/params.json')
+    # 从参数字典加载参数
+    # param_handler.load_from_dict(update_params)
 
     # 从 INI 文件加载参数
     # param_handler.load_from_ini('test/params.ini')
 
     # 获取参数
-    # fast_period = param_handler.get_param('fast_period')
-    # slow_period = param_handler.get_param('slow_period')
-    # test_flag  = param_handler.get_param('test_flag')
-    # lost_perc = param_handler.get_param('lost_perc')
-    # test_add = param_handler.get_param('test_add', 20)
-    # print(f'fast_period: {fast_period}, slow_period: {slow_period}, test_flag: {test_flag},lost_perc:{lost_perc}')
-    # print(f'test_add:{test_add}')
+    fast_period = param_handler.get_param('fast_period')
+    slow_period = param_handler.get_param('slow_period')
+    test_flag  = param_handler.get_param('test_flag')
+    lost_perc = param_handler.get_param('lost_perc')
+    test_add = param_handler.get_param('test_add', 20)
+    print(f'fast_period: {fast_period}, slow_period: {slow_period}, test_flag: {test_flag},lost_perc:{lost_perc}')
+    print(f'test_add:{test_add}')
 
-    param_handler.load_from_json('configure/user_cfg.json')
-    key = param_handler.get_param('key')
-    secret = param_handler.get_param('secret')
+    # 测试配置key,从json添加
+    # param_handler.load_from_json('configure/user_cfg.json')
+    # key = param_handler.get_param('key')
+    # secret = param_handler.get_param('secret')
 
-    print(f'key:{key}')
-    print(f'secret:{secret}')
+    # print(f'key:{key}')
+    # print(f'secret:{secret}')
 
 
