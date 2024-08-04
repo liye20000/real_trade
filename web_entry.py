@@ -101,11 +101,11 @@ async def get_trading_data_page(trader_id: int):
         return HTMLResponse(f.read())
 
 
-@app.get("/chart/{trader_id}")
-async def get_chart(trader_id: int):
-    if trader_id >= len(traders):
-        raise HTTPException(status_code=404, detail="Trader not found")
-    return {"chart": "Chart for trader {}".format(trader_id)}
+# @app.get("/chart/{trader_id}")
+# async def get_chart(trader_id: int):
+#     if trader_id >= len(traders):
+#         raise HTTPException(status_code=404, detail="Trader not found")
+#     return {"chart": "Chart for trader {}".format(trader_id)}
 
 
 @app.get("/api/traders")
@@ -129,6 +129,10 @@ async def set_trader_switch(trader_id: int, switch: SwitchState):
 async def read_index():
     return FileResponse('frontend/index.html')
 
+#绘制图形界面
+@app.get("/frontend/trade_graph.html")
+async def serve_trade_graph_page():
+    return FileResponse('frontend/trade_graph.html')
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8080)
