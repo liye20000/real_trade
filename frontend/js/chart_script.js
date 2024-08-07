@@ -9,6 +9,9 @@ async function loadTradeGraph(traderId) {
         var values = [];
         var volumes = [];
         var fastMA = []; // 新增变量，用于存储fast_ma均线数据
+        var buyPoints = [];  // 新增，用于存储买入点
+        var sellPoints = []; // 新增，用于存储卖出点
+        var lines = []; // 存储买卖点之间的连线
     
 
 
@@ -20,6 +23,62 @@ async function loadTradeGraph(traderId) {
             // fastMA.push(parseFloat(data[i].sma_fast).toFixed(1));
             var smaValue = parseFloat(data[i].sma_fast).toFixed(1);
             fastMA.push(smaValue == 0 ? null : smaValue); // 将0值设置为null
+            if (data[i].buy) { // 如果buy字段有值
+                buyPoints.push({
+                    name: 'Buy',
+                    value: [data[i].timestamp, data[i].buy],
+                    // value: data[i].buy,
+                    symbol: 'triangle', // 图标类型
+                    symbolSize: 15, // 图标大小
+                    itemStyle: {
+                        color: 'green' // 图标颜色
+                    },
+                    label: {
+                        show: true,
+                        formatter: 'B', // 图标内显示的文本
+                        position: 'top'
+                    },
+                    tooltip: {
+                        formatter: `时间: ${data[i].timestamp}<br/>买入点位: ${data[i].buy}<br/>买入额度: ${data[i].volume}`
+                    }
+                });
+            }
+            if (data[i].sell) { // 如果sell字段有值
+                sellPoints.push({
+                    name: 'Sell',
+                    value: [data[i].timestamp, data[i].sell],
+                    // value: data[i].sell,
+                    symbol: 'diamond', // 图标类型
+                    symbolSize: 15, // 图标大小
+                    itemStyle: {
+                        color: 'red' // 图标颜色
+                    },
+                    label: {
+                        show: true,
+                        formatter: 'S', // 图标内显示的文本
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        formatter: `时间: ${data[i].timestamp}<br/>卖出点位: ${data[i].sell}<br/>卖出额度: ${data[i].volume}`
+                    }
+                });
+                // 添加买卖点之间的连线
+                if (buyPoints.length > 0) {
+                    let lastBuy = buyPoints[buyPoints.length - 1];
+                    let lineColor = lastBuy.value[1] < data[i].sell ? 'green' : 'red';
+                    lines.push({
+                        coords: [
+                            [lastBuy.value[0], lastBuy.value[1]], // 使用buy点的时间
+                            [categoryData[i], data[i].sell]
+                        ],
+                        lineStyle: {
+                            color: lineColor,
+                            type:'dashed' //使用虚线
+                        }
+                    });
+                }
+            }
+
         }
 
         // 主图表选项
@@ -35,7 +94,7 @@ async function loadTradeGraph(traderId) {
                 }
             },
              legend: {
-                data: ['K线', 'Fast MA']
+                data: ['K线', 'Fast MA','Buy Points','Sell Points','Buy-Sell Lines']
             },
             xAxis: {
                 type: 'category',
@@ -88,6 +147,38 @@ async function loadTradeGraph(traderId) {
                     smooth: true,
                     lineStyle: {
                         color: '#FF9900' // fast_ma均线颜色
+                    }
+                },
+                {
+                    type: 'scatter',
+                    name: 'Buy Points',
+                    data: buyPoints,
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: function (params) {
+                            return params.data.tooltip.formatter;
+                        }
+                    }
+                },
+                {
+                    type: 'scatter',
+                    name: 'Sell Points',
+                    data: sellPoints,
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: function (params) {
+                            return params.data.tooltip.formatter;
+                        }
+                    }
+                },
+                {
+                    type: 'lines',
+                    name: 'Buy-Sell Lines',
+                    coordinateSystem: 'cartesian2d',
+                    data: lines,
+                    lineStyle: {
+                        type:'dashed',
+                        width: 2
                     }
                 }
             ]
