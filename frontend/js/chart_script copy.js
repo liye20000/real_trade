@@ -8,35 +8,27 @@ async function loadTradeGraph(traderId) {
         var categoryData = [];
         var values = [];
         var volumes = [];
-        var fastMA = []; // 新增变量，用于存储fast_ma均线数据
-    
-
+        var sma_fast = [];
 
         for (var i = 0; i < data.length; i++) {
             categoryData.push(data[i].timestamp);
             values.push([data[i].open, data[i].close, data[i].low, data[i].high]);
+            sma_fast.push([data[i].sma_fast]);
             volumes.push(data[i].volume);
-            // fastMA.push(data[i].fast_ma); // 新增，将fast_ma数据推入数组
-            // fastMA.push(parseFloat(data[i].sma_fast).toFixed(1));
-            var smaValue = parseFloat(data[i].sma_fast).toFixed(1);
-            fastMA.push(smaValue == 0 ? null : smaValue); // 将0值设置为null
         }
 
         // 主图表选项
         var mainOption = {
             title: {
-                text: 'K线图',
+                text: 'K线图hehe',
                 left: 0
             },
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: {
-                    type: 'cross'
-                }
-            },
-             legend: {
-                data: ['K线', 'Fast MA']
-            },
+
+            grid: {
+                left: '10%',
+                right: '10%',
+                bottom: '15%'
+              },
             xAxis: {
                 type: 'category',
                 data: categoryData,
@@ -53,7 +45,7 @@ async function loadTradeGraph(traderId) {
                     show: true
                 }
             },
-            dataZoom: [  //TODO: 后续修改统一滑块
+            dataZoom: [
                 {
                     type: 'inside',
                     xAxisIndex: [0, 1], // 指定两个图表共享同一个dataZoom
@@ -79,15 +71,6 @@ async function loadTradeGraph(traderId) {
                         color0: '#0CF49B', // 上涨颜色
                         borderColor: '#FD1050',
                         borderColor0: '#0CF49B'
-                    }
-                },
-                {
-                    type: 'line', // 新增，用于显示fast_ma均线
-                    name: 'Fast MA',
-                    data: fastMA,
-                    smooth: true,
-                    lineStyle: {
-                        color: '#FF9900' // fast_ma均线颜色
                     }
                 }
             ]
