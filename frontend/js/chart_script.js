@@ -157,12 +157,12 @@ async function loadTradeGraph(traderId) {
                 // right: 10,
                 // top: 20,
                 // bottom: 20,
-                data: ['K线', 'Fast MA','Slow MA','Buy Points','Sell Points','Buy-Sell Lines','Volume']
+                data: ['K线', 'Fast MA','Slow MA','Buy Points','Sell Points','Buy-Sell Lines','Volume','VolumeMa']
             },
             dataZoom: [
                 {
                   type: 'slider',
-                  xAxisIndex: [0, 1],
+                  xAxisIndex: [0, 2],
                   realtime: false,
                   start: 20,
                   end: 70,
@@ -172,7 +172,7 @@ async function loadTradeGraph(traderId) {
                 },
                 {
                   type: 'inside',
-                  xAxisIndex: [0, 1],
+                  xAxisIndex: [0, 2],
                   start: 40,
                   end: 70,
                   top: 30,
@@ -221,12 +221,34 @@ async function loadTradeGraph(traderId) {
                 //       color: '#B80C00'
                 //     }
                 //   }
+                },
+                {
+                  type: 'category',
+                  gridIndex: 2,
+                  data: categoryData,
+                  boundaryGap: true,
+                  splitLine: { show: true },
+                  axisLabel: { show: true },
+                  axisTick: { show: true },
+                  axisLine: { lineStyle: { color: '#777' } },
+                  min: 'dataMin',
+                  max: 'dataMax',
+                //   axisPointer: {  //辅助图标，不需要
+                //     type: 'shadow',
+                //     label: { show: false },
+                //     triggerTooltip: true,
+                //     handle: {
+                //       show: true,
+                //       margin: 30,
+                //       color: '#B80C00'
+                //     }
+                //   }
                 }
               ],
               yAxis: [
                 {
                   scale: true,
-                  splitNumber: 2,
+                  splitNumber: 3,
                   axisLine: { lineStyle: { color: '#777' } },
                   splitLine: { show: true },
                   axisTick: { show: false },
@@ -238,7 +260,16 @@ async function loadTradeGraph(traderId) {
                 {
                   scale: true,
                   gridIndex: 1,
-                  splitNumber: 2,
+                  splitNumber: 3,
+                  axisLabel: { show: false },
+                  axisLine: { show: false }, //用来做显示y轴坐标
+                  axisTick: { show: false },
+                  splitLine: { show: false }
+                },
+                {
+                  scale: true,
+                  gridIndex: 2,
+                  splitNumber: 3,
                   axisLabel: { show: false },
                   axisLine: { show: false }, //用来做显示y轴坐标
                   axisTick: { show: false },
@@ -285,21 +316,21 @@ async function loadTradeGraph(traderId) {
                   // },
                   data: volumes
                 },
-                // {
-                //   name: 'VolumeMa',
-                //   type: 'line',
-                //   xAxisIndex: 1,
-                //   yAxisIndex: 2,
-                //   // itemStyle: {
-                //   //   color: '#7fbe9e'
-                //   // },
-                //   // emphasis: {
-                //   //   itemStyle: {
-                //   //     color: '#140'
-                //   //   }
-                //   // },
-                //   data: volume_ma
-                // },
+                {
+                  name: 'VolumeMa',
+                  type: 'line',
+                  xAxisIndex: 2,
+                  yAxisIndex: 2,
+                  // itemStyle: {
+                  //   color: '#7fbe9e'
+                  // },
+                  // emphasis: {
+                  //   itemStyle: {
+                  //     color: '#140'
+                  //   }
+                  // },
+                  data: volume_ma
+                },
 
                 {
                   type: 'candlestick',
