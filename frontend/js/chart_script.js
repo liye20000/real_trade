@@ -3,64 +3,54 @@ async function loadTradeGraph(traderId) {
         // 从API获取数据
         const response = await fetch(`/api/strategy_data/${traderId}`);
         const data = await response.json();
-        const upColor = '#00da3c';
-        const downColor = '#ec0000';
+
+        const trade_response = await fetch(`/api/trading_data/${traderId}`);
+        const trade_data = await trade_response.json();
+        const upColor = '#ef232a';
+        const downColor = '#14b143';
 
         // 处理数据
         var categoryData = [];
         var values = [];
+
         var volumes = [];
         var fastMA = []; // 新增变量，用于存储fast_ma均线数据
         var slowMA = [];
+        var volume_ma = [];
+        
         var buyPoints = [];  // 新增，用于存储买入点
         var sellPoints = []; // 新增，用于存储卖出点
         var lines = []; // 存储买卖点之间的连线
-        var volume_ma = [];
     
+        for (var i=0; i<trade_data.length; i++){
+          let formattedDateTime = trade_data[i].execution_time.slice(0, 13) + ':00:00';
 
-
-        for (var i = 0; i < data.length; i++) {
-            categoryData.push(data[i].timestamp);
-            values.push([data[i].open, data[i].close, data[i].low, data[i].high]);
-            // volumes.push(data[i].volume);
-            volumes.push([i, data[i].volume, data[i].close > data[i].open ? 1 : -1]); //为了上色
-
-            // fastMA.push(data[i].fast_ma); // 新增，将fast_ma数据推入数组
-            // fastMA.push(parseFloat(data[i].sma_fast).toFixed(1));
-            var smaValue = parseFloat(data[i].sma_fast).toFixed(1);
-            fastMA.push(smaValue == 0 ? null : smaValue); // 将0值设置为null
-
-            var slowMaValue = parseFloat(data[i].sma_slow).toFixed(1);
-            slowMA.push(slowMaValue==0? null:slowMaValue);
-
-            var volumeMaValue = parseFloat(data[i].volume_ma).toFixed(1);
-            volume_ma.push(volumeMaValue);
-
-            if (data[i].buy) { // 如果buy字段有值
-                buyPoints.push({
-                    name: 'Buy',
-                    value: [data[i].timestamp, data[i].buy],
-                    // value: data[i].buy,
-                    symbol: 'triangle', // 图标类型
-                    symbolSize: 15, // 图标大小
-                    itemStyle: {
-                        color: 'green' // 图标颜色
-                    },
-                    label: {
-                        show: true,
-                        formatter: 'B', // 图标内显示的文本
-                        position: 'top'
-                    },
-                    tooltip: {
-                        formatter: `时间: ${data[i].timestamp}<br/>买入点位: ${data[i].buy}<br/>买入额度: ${data[i].volume}`
-                    }
-                });
-            }
-            if (data[i].sell) { // 如果sell字段有值
+          // 将日期对象格式化为字符串输出
+          if (trade_data[i].side == 'BUY') { // 如果buy字段有值
+              // 格式化为字符串输出
+              // let formattedDateTime = dateObj.toISOString().slice(0, 19).replace('T', ' ');
+              buyPoints.push({
+                  name: 'Buy',
+                  value: [formattedDateTime, trade_data[i].trade_price],
+                  symbol: 'triangle', // 图标类型
+                  symbolSize: 15, // 图标大小
+                  itemStyle: {
+                      color: 'green' // 图标颜色
+                  },
+                  label: {
+                      show: true,
+                      formatter: 'B', // 图标内显示的文本
+                      position: 'top'
+                  },
+                  tooltip: {
+                      formatter: `时间: ${trade_data[i].execution_time}<br/>买入点位: ${trade_data[i].trade_price}<br/>买入额度: ${trade_data[i].trade_volume}`
+                  }
+              });
+          }
+          if (trade_data[i].side == 'SELL') { // 如果sell字段有值
                 sellPoints.push({
                     name: 'Sell',
-                    value: [data[i].timestamp, data[i].sell],
-                    // value: data[i].sell,
+                    value: [formattedDateTime, trade_data[i].trade_price],
                     symbol: 'diamond', // 图标类型
                     symbolSize: 15, // 图标大小
                     itemStyle: {
@@ -72,32 +62,105 @@ async function loadTradeGraph(traderId) {
                         position: 'bottom'
                     },
                     tooltip: {
-                        formatter: `时间: ${data[i].timestamp}<br/>卖出点位: ${data[i].sell}<br/>卖出额度: ${data[i].volume}`
+                        formatter: `时间: ${trade_data[i].execution_time}<br/>卖出点位: ${trade_data[i].trade_price}<br/>卖出额度: ${trade_data[i].trade_volume}`
                     }
                 });
                 // 添加买卖点之间的连线
                 if (buyPoints.length > 0) {
-                    let lastBuy = buyPoints[buyPoints.length - 1];
-                    let lineColor = lastBuy.value[1] < data[i].sell ? 'green' : 'red';
-                    lines.push({
-                        coords: [
-                            [lastBuy.value[0], lastBuy.value[1]], // 使用buy点的时间
-                            [categoryData[i], data[i].sell]
-                        ],
-                        lineStyle: {
-                            color: lineColor,
-                            type:'dashed' //使用虚线
-                        }
-                    });
+                  let lastBuy = buyPoints[buyPoints.length - 1];
+                  let lineColor = lastBuy.value[1] < data[i].sell ? 'green' : 'red';
+                  lines.push({
+                      coords: [
+                          [lastBuy.value[0], lastBuy.value[1]], // 使用buy点的时间
+                          [formattedDateTime, trade_data[i].trade_price]
+                      ],
+                      lineStyle: {
+                          color: lineColor,
+                          type:'dashed' //使用虚线
+                      }
+                  });
                 }
-            }
+          }
+        }
+
+        for (var i = 0; i < data.length; i++) {
+            categoryData.push(data[i].timestamp);
+            values.push([data[i].open, data[i].close, data[i].low, data[i].high]);
+
+            //处理策略数据
+            volumes.push([i, data[i].volume, data[i].close > data[i].open ? 1 : -1]); //为了上色
+            var smaValue = parseFloat(data[i].sma_fast).toFixed(1);
+            fastMA.push(smaValue == 0 ? null : smaValue); // 将0值设置为null
+            var slowMaValue = parseFloat(data[i].sma_slow).toFixed(1);
+            slowMA.push(slowMaValue==0? null:slowMaValue);
+            var volumeMaValue = parseFloat(data[i].volume_ma).toFixed(1);
+            volume_ma.push(volumeMaValue);
+
+            // //处理买卖数据
+            // if (data[i].buy) { // 如果buy字段有值
+            //     buyPoints.push({
+            //         name: 'Buy',
+            //         value: [data[i].timestamp, data[i].buy],
+            //         // value: data[i].buy,
+            //         symbol: 'triangle', // 图标类型
+            //         symbolSize: 15, // 图标大小
+            //         itemStyle: {
+            //             color: 'green' // 图标颜色
+            //         },
+            //         label: {
+            //             show: true,
+            //             formatter: 'B', // 图标内显示的文本
+            //             position: 'top'
+            //         },
+            //         tooltip: {
+            //             formatter: `时间: ${data[i].timestamp}<br/>买入点位: ${data[i].buy}<br/>买入额度: ${data[i].volume}`
+            //         }
+            //     });
+            // }
+            // if (data[i].sell) { // 如果sell字段有值
+            //     sellPoints.push({
+            //         name: 'Sell',
+            //         value: [data[i].timestamp, data[i].sell],
+            //         // value: data[i].sell,
+            //         symbol: 'diamond', // 图标类型
+            //         symbolSize: 15, // 图标大小
+            //         itemStyle: {
+            //             color: 'red' // 图标颜色
+            //         },
+            //         label: {
+            //             show: true,
+            //             formatter: 'S', // 图标内显示的文本
+            //             position: 'bottom'
+            //         },
+            //         tooltip: {
+            //             formatter: `时间: ${data[i].timestamp}<br/>卖出点位: ${data[i].sell}<br/>卖出额度: ${data[i].volume}`
+            //         }
+            //     });
+            //     // 添加买卖点之间的连线
+            //     if (buyPoints.length > 0) {
+            //         let lastBuy = buyPoints[buyPoints.length - 1];
+            //         let lineColor = lastBuy.value[1] < data[i].sell ? 'green' : 'red';
+            //         lines.push({
+            //             coords: [
+            //                 [lastBuy.value[0], lastBuy.value[1]], // 使用buy点的时间
+            //                 [categoryData[i], data[i].sell]
+            //             ],
+            //             lineStyle: {
+            //                 color: lineColor,
+            //                 type:'dashed' //使用虚线
+            //             }
+            //         });
+            //     }
+            // }
 
         }
 
+
+       
         // 主图表选项
         var mainOption = {
             title: {
-              text: 'K线图',
+              text: '策略数据图形化展示',
               left: 'center',  // 将标题居中
               top: 30,         // 距离顶部的距离
               textStyle: {
@@ -134,32 +197,7 @@ async function loadTradeGraph(traderId) {
                     backgroundColor: '#777'
                     }
             },
-            visualMap: {  //后面volume上色用
-                  show: false,
-                  seriesIndex: 0,
-                  dimension: 2,
-                  pieces: [
-                        {
-                          value: 1,
-                          color: downColor
-                        },
-                        {
-                          value: -1,
-                          color: upColor
-                        }
-                  ]
-            },
-            legend: {
-                // right: 30,
-                orient: 'vertical',  // 设置图例的排列方向为垂直
-                right: '10px',       // 将图例挪到屏幕右边
-                top: '10%',       // 将图例垂直居中
-                // right: 10,
-                // top: 20,
-                // bottom: 20,
-                data: ['K线', 'Fast MA','Slow MA','Buy Points','Sell Points','Buy-Sell Lines','Volume','VolumeMa']
-            },
-            dataZoom: [
+            dataZoom: [ //滑动条设置
                 {
                   type: 'slider',
                   xAxisIndex: [0,1,2],
@@ -179,7 +217,7 @@ async function loadTradeGraph(traderId) {
                   height: 20
                 }
               ],
-              xAxis: [
+            xAxis: [
                 {
                   type: 'category',
                   data: categoryData,
@@ -251,7 +289,7 @@ async function loadTradeGraph(traderId) {
                 //   }
                 }
               ],
-              yAxis: [
+            yAxis: [
                 {
                   scale: true,
                   splitNumber: 5,
@@ -296,7 +334,7 @@ async function loadTradeGraph(traderId) {
                     formatter: '{value}\n'},
                 }
               ],
-              grid: [  //改成百分数后，尺寸可以动态调整
+            grid: [  //改成百分数后，尺寸可以动态调整
                 {
                   left: '7%',
                   right: '10%',
@@ -317,137 +355,155 @@ async function loadTradeGraph(traderId) {
 
               ],
             
-              series: [
-                {
-                  name: 'Volume',
-                  type: 'bar',
-                  xAxisIndex: 1,
-                  yAxisIndex: 1,
-                  data: volumes
+            series: [
+              {
+                type: 'candlestick',
+                name: 'K线',
+                data: values,
+                itemStyle: {
+                  color: upColor,
+                  color0: downColor,
+                  borderColor: upColor,
+                  borderColor0: downColor
                 },
-                {
-                  name: 'VolumeMa',
-                  type: 'line',
-                  xAxisIndex: 2,
-                  yAxisIndex: 2,
-                  // itemStyle: {
-                  //   color: '#7fbe9e'
-                  // },
-                  // emphasis: {
-                  //   itemStyle: {
-                  //     color: '#140'
-                  //   }
-                  // },
-                  data: volume_ma,
-                  markLine: {
-                    symbol: 'none', // 不显示箭头
-                    data: [
-                      {
-                        name: '第一条线',
-                        yAxis: 10000, // 固定在y轴50的位置
-                        lineStyle: {
-                          type: 'dashed', // 虚线
-                          color: 'blue', // 第一条线的颜色
-                          width: 1
-                        }
-                      },
-                      {
-                        name: '第二条线',
-                        yAxis: 30000, // 固定在y轴100的位置
-                        lineStyle: {
-                          type: 'dashed', // 虚线
-                          color: 'red', // 第一条线的颜色
-                          width: 1
-                        }
-                      }
-                    ]
-                  }
-                },
+              },
                 
-
-                {
-                  type: 'candlestick',
-                  name: 'K线',
-                  data: values,
-                  itemStyle: {
-                    color: '#ef232a',
-                    color0: '#14b143',
-                    borderColor: '#ef232a',
-                    borderColor0: '#14b143'
-                  },
-                },
-                {
-                    type: 'line', // 新增，用于显示fast_ma均线
-                    name: 'Fast MA',
-                    data: fastMA,
-                    smooth: true,
-                    lineStyle: {
-                        color: '#FF9900' // fast_ma均线颜色
-                    }
-                },
-                {
-                    type: `line`,
-                    name: 'Slow MA',
-                    data: slowMA,
-                    smooth: true,
-                    lineStyle:{
-                      color: '#FF9922'
-                    }
-                },
-                {
-                    type: 'scatter',
-                    name: 'Buy Points',
-                    data: buyPoints,
-                    tooltip: {
-                        trigger: 'item',
-                        formatter: function (params) {
-                            return params.data.tooltip.formatter;
-                        }
-                    }
-                },
-                {
-                    type: 'scatter',
-                    name: 'Sell Points',
-                    data: sellPoints,
-                    tooltip: {
-                        trigger: 'item',
-                        formatter: function (params) {
-                            return params.data.tooltip.formatter;
-                        }
-                    }
-                },
-                {
-                    type: 'lines',
-                    name: 'Buy-Sell Lines',
-                    coordinateSystem: 'cartesian2d',
-                    data: lines,
-                    lineStyle: {
-                        type:'dashed',
-                        width: 2
-                    }
-                }
+                
               
               ]
-            };
+        };
 
-     
+        var stra_ma_series = [
+          {
+            type: 'line', // 新增，用于显示fast_ma均线
+            name: 'Fast MA',
+            data: fastMA,
+            smooth: true,
+            lineStyle: {
+                color: '#FF9900' // fast_ma均线颜色
+            }
+          },
+          {
+            type: `line`,
+            name: 'Slow MA',
+            data: slowMA,
+            smooth: true,
+            lineStyle:{
+              color: '#FF9922'
+            }
+          },
+          {
+            name: 'Volume',
+            type: 'bar',
+            xAxisIndex: 1,
+            yAxisIndex: 1,
+            data: volumes,
+            itemStyle: {
+              color: function(params) {
+                  // 根据 params.data[2] (即 1 或 -1) 来设置颜色
+                  return params.data[2] > 0 ? upColor : downColor;
+              }
+          }
+          },
+          {
+            name: 'VolumeMa',
+            type: 'line',
+            xAxisIndex: 2,
+            yAxisIndex: 2,
+            data: volume_ma,
+            smooth: true,
+            lineStyle:{
+              color: '#585eaa'
+            },
+            markLine: {
+              symbol: 'none', // 不显示箭头
+              data: [
+                {
+                  name: '第一条线',
+                  yAxis: 10000, // 固定在y轴50的位置
+                  lineStyle: {
+                    type: 'dashed', // 虚线
+                    color: 'blue', // 第一条线的颜色
+                    width: 1
+                  }
+                },
+                {
+                  name: '第二条线',
+                  yAxis: 30000, // 固定在y轴100的位置
+                  lineStyle: {
+                    type: 'dashed', // 虚线
+                    color: 'red', // 第一条线的颜色
+                    width: 1
+                  }
+                }
+              ]
+            }
+          },
+        ];
+
+        var trade_series = [
+          {
+            type: 'scatter',
+            name: 'Buy Points',
+            data: buyPoints,
+            tooltip: {
+                trigger: 'item',
+                formatter: function (params) {
+                    return params.data.tooltip.formatter;
+                }
+            }
+          },
+          {
+              type: 'scatter',
+              name: 'Sell Points',
+              data: sellPoints,
+              tooltip: {
+                  trigger: 'item',
+                  formatter: function (params) {
+                      return params.data.tooltip.formatter;
+                  }
+              }
+          },
+          {
+              type: 'lines',
+              name: 'Buy-Sell Lines',
+              coordinateSystem: 'cartesian2d',
+              data: lines,
+              lineStyle: {
+                  type:'dashed',
+                  width: 2
+              }
+          }
+        ];
+
+        var stra_ma_legend = {  
+          // right: 30,
+          orient: 'vertical',  // 设置图例的排列方向为垂直
+          right: '10px',       // 将图例挪到屏幕右边
+          top: '10%',       // 将图例垂直居中
+          // right: 10,
+          // top: 20,
+          // bottom: 20,
+          data: ['K线', 'Fast MA','Slow MA','Buy Points','Sell Points','Buy-Sell Lines','Volume','VolumeMa']
+        };
+        mainOption.legend = stra_ma_legend;
+        mainOption.series = mainOption.series.concat(trade_series);
+        mainOption.series = mainOption.series.concat(stra_ma_series);
+
+
 
         // 获取图表的容器
         var mainChartDom = document.getElementById('main');
-        // var volumeChartDom = document.getElementById('volume');
 
         // 初始化图表实例
         var mainChart = echarts.init(mainChartDom);
-        // var volumeChart = echarts.init(volumeChartDom);
 
         // 设置图表选项
         mainChart.setOption(mainOption);
-        // volumeChart.setOption(volumeOption);
 
         // 窗口大小变化时调整图表大小
         window.addEventListener('resize', function () {
             mainChart.resize();
-            // volumeChart.resize();
         });
 
     } catch (error) {
