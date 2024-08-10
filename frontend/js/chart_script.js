@@ -134,7 +134,7 @@ async function loadTradeGraph(traderId) {
                     backgroundColor: '#777'
                     }
             },
-            visualMap: {  //先加上，后面volume上色用
+            visualMap: {  //后面volume上色用
                   show: false,
                   seriesIndex: 0,
                   dimension: 2,
@@ -162,18 +162,18 @@ async function loadTradeGraph(traderId) {
             dataZoom: [
                 {
                   type: 'slider',
-                  xAxisIndex: [0, 2],
+                  xAxisIndex: [0,1,2],
                   realtime: false,
                   start: 20,
                   end: 70,
                   top: 'bottom',
-                  height: 20,
+                  height: 30,
                   handleSize: '120%'
                 },
                 {
                   type: 'inside',
-                  xAxisIndex: [0, 2],
-                  start: 40,
+                  xAxisIndex: [0,1,2],
+                  start: 20,
                   end: 70,
                   top: 30,
                   height: 20
@@ -183,56 +183,62 @@ async function loadTradeGraph(traderId) {
                 {
                   type: 'category',
                   data: categoryData,
-                  boundaryGap: false,
-                  axisLine: { lineStyle: { color: '#777' } },
-                //   axisLabel: {
-                //     formatter: function (value) {
-                //       return echarts.format.formatTime('MM-dd', value);
-                //     }
-                //   },
+                  axisLine: {  //横坐标线的属性 
+                    show: true,
+                    lineStyle: { type:'dashed',width:2 } 
+                  },
+             
                   min: 'dataMin',
                   max: 'dataMax',
-                  axisPointer: {
-                    show: true
+                  axisPointer: {  //显示轨迹，但不显示浮动坐标
+                    show: true,
+                    label:{show:false}
                   },
                   boundaryGap: false,
-                  splitLine: { show: false },
+                  splitLine: { show: true }, //横向坐标轴表格
                   axisLabel: { show: false },
                   axisTick: { show: false }
                 },
                 {
-                  type: 'category',
                   gridIndex: 1,
+                  type: 'category',
                   data: categoryData,
-                  boundaryGap: true,
-                  splitLine: { show: true },
-                  axisLabel: { show: true },
-                  axisTick: { show: true },
-                  axisLine: { lineStyle: { color: '#777' } },
+                  axisLine: {
+                    show: true,
+                    lineStyle:{ type:'dashed',width:2 }
+                  },
+
                   min: 'dataMin',
                   max: 'dataMax',
-                //   axisPointer: {  //辅助图标，不需要
-                //     type: 'shadow',
-                //     label: { show: false },
-                //     triggerTooltip: true,
-                //     handle: {
-                //       show: true,
-                //       margin: 30,
-                //       color: '#B80C00'
-                //     }
-                //   }
+                  axisPointer:{
+                    show:true,
+                    label:{show:false}
+                    },
+                  boundaryGap: true,
+                  splitLine: { show: true },
+                  axisLabel: { show: false },//是否显示坐标
+                  axisTick: { show: false }
                 },
                 {
-                  type: 'category',
                   gridIndex: 2,
+                  type: 'category',
                   data: categoryData,
+                  axisLine: {
+                    show: true,
+                    lineStyle:{ type:'solid',width:2 }
+                  },
+
+                  min: 'dataMin',
+                  max: 'dataMax',
+                  axisPointer:{
+                    show:true,
+                    label:{show:true}
+                    },
                   boundaryGap: true,
                   splitLine: { show: true },
                   axisLabel: { show: true },
-                  axisTick: { show: true },
-                  axisLine: { lineStyle: { color: '#777' } },
-                  min: 'dataMin',
-                  max: 'dataMax',
+                  axisTick: { show: false },
+                  
                 //   axisPointer: {  //辅助图标，不需要
                 //     type: 'shadow',
                 //     label: { show: false },
@@ -248,53 +254,64 @@ async function loadTradeGraph(traderId) {
               yAxis: [
                 {
                   scale: true,
-                  splitNumber: 3,
-                  axisLine: { lineStyle: { color: '#777' } },
-                  splitLine: { show: true },
-                  axisTick: { show: false },
-                  axisLabel: {
-                    inside: true,
+                  splitNumber: 5,
+                  axisLine: {
+                    show:true, 
+                    lineStyle: { type: 'solid' } 
+                  },
+                  splitLine: { show: true }, //坐标轴表格
+                  axisTick: { show: false }, //刻度
+                  axisLabel: {  //标签
+                    inside: false,
                     formatter: '{value}\n'
                   }
                 },
                 {
-                  scale: true,
                   gridIndex: 1,
+                  scale: true,
                   splitNumber: 3,
-                  axisLabel: { show: false },
-                  axisLine: { show: false }, //用来做显示y轴坐标
+                  axisLine: { 
+                    show: true,
+                    lineStyle:{type: 'solid'}
+                  }, //用来做显示y轴坐标
+                  splitLine:{show: true},
                   axisTick: { show: false },
-                  splitLine: { show: false }
+                  axisLabel: { 
+                    inside: false,
+                    formatter: '{value}\n' 
+                  }
                 },
                 {
-                  scale: true,
                   gridIndex: 2,
+                  scale: true,
                   splitNumber: 3,
-                  axisLabel: { show: false },
-                  axisLine: { show: false }, //用来做显示y轴坐标
+                  axisLine: {
+                    show: true,
+                    lineStyle:{type: 'solid'}
+                  },
+                  splitLine: { show: true},
                   axisTick: { show: false },
-                  splitLine: { show: false }
+                  axisLabel: { 
+                    inside: false,
+                    formatter: '{value}\n'},
                 }
               ],
               grid: [  //改成百分数后，尺寸可以动态调整
                 {
-                  left: '10%',
-                  right: '8%',
-                  // top: 110,
+                  left: '7%',
+                  right: '10%',
                   height: '50%'
                 },
                 {
-                  left: '10%',
-                  right: '8%',
-                  top: '55%',
-                  // height: 60,
+                  left: '7%',
+                  right: '10%',
+                  top: '57%',
                   height: '16%'
                 },
                 {
-                  left: '10%',
-                  right: '8%',
+                  left: '7%',
+                  right: '10%',
                   top: '75%',
-                  // height: 60,
                   height: '16%'
                 }
 
@@ -306,14 +323,6 @@ async function loadTradeGraph(traderId) {
                   type: 'bar',
                   xAxisIndex: 1,
                   yAxisIndex: 1,
-                  // itemStyle: {
-                  //   color: '#7fbe9e'
-                  // },
-                  // emphasis: {
-                  //   itemStyle: {
-                  //     color: '#140'
-                  //   }
-                  // },
                   data: volumes
                 },
                 {
@@ -329,8 +338,32 @@ async function loadTradeGraph(traderId) {
                   //     color: '#140'
                   //   }
                   // },
-                  data: volume_ma
+                  data: volume_ma,
+                  markLine: {
+                    symbol: 'none', // 不显示箭头
+                    data: [
+                      {
+                        name: '第一条线',
+                        yAxis: 10000, // 固定在y轴50的位置
+                        lineStyle: {
+                          type: 'dashed', // 虚线
+                          color: 'blue', // 第一条线的颜色
+                          width: 1
+                        }
+                      },
+                      {
+                        name: '第二条线',
+                        yAxis: 30000, // 固定在y轴100的位置
+                        lineStyle: {
+                          type: 'dashed', // 虚线
+                          color: 'red', // 第一条线的颜色
+                          width: 1
+                        }
+                      }
+                    ]
+                  }
                 },
+                
 
                 {
                   type: 'candlestick',
@@ -356,7 +389,7 @@ async function loadTradeGraph(traderId) {
                     type: `line`,
                     name: 'Slow MA',
                     data: slowMA,
-                    smooth: false,
+                    smooth: true,
                     lineStyle:{
                       color: '#FF9922'
                     }
