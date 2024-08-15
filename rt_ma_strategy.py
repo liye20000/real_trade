@@ -49,7 +49,7 @@ class CoreDMAStrategy:
                 elif df['signal'][i] < 0 and df['signal'][i - 1] >= 0 and volume_increasing:
                     signals.append(('sell', df['timestamp'][i]))
                     df.loc[i,'sell'] = df['close'][i]
-            self.logger.info(signals)
+            # self.logger.info(signals)
 
         except Exception as e:
             self.logger.error(f"Error generate signals: {e}")

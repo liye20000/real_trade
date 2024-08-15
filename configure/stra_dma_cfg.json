@@ -1,6 +1,6 @@
 {
-    "fast_period": 11, 
-    "slow_period": 21,
+    "fast_period": 3, 
+    "slow_period": 8,
     "volume_threshold": 1.5,
     "volume_window":5  
 }

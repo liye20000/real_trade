@@ -1,5 +1,5 @@
 {
     "symbol": "BTCUSDT",
-    "timeframe": "1h",
-    "limit": 200
+    "timeframe": "5m",
+    "limit": 30
 }

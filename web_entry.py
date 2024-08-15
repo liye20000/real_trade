@@ -43,9 +43,9 @@ shutdown_event = asyncio.Event()
 
 async def process_strategy_background(trader):
     while not shutdown_event.is_set():
-        # if trader.tradeswitch:
-        #     trader.process_stategy()
-        await asyncio.sleep(5)  # 每隔5秒调用一次
+        if trader.tradeswitch:
+            trader.process_stategy()
+        await asyncio.sleep(30)  # 每隔5秒调用一次
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

@@ -1,3 +1,27 @@
+// UTC 时间转换为本地时区时间
+function convertToLocaleTime(utcTime) {
+    const date = new Date(utcTime + ' UTC');
+    return date.toLocaleString();
+}
+function roundDownToFiveMinuteInterval(dateTime) {
+    // 解析日期时间字符串
+    // var date = new Date(dateTime);
+    var date = new Date(dateTime.replace(' ', 'T') + 'Z');
+
+    // 获取分钟数
+    var minutes = date.getMinutes();
+
+    // 计算向前取整的5分钟间隔
+    var roundedMinutes = Math.floor(minutes / 5) * 5;
+
+    // 设置日期对象的分钟和秒数为整5分钟
+    date.setMinutes(roundedMinutes);
+    date.setSeconds(0);
+    date.setMilliseconds(0);
+
+    // 格式化为 'YYYY-MM-DD HH:mm:ss'
+    return date.toISOString().slice(0, 19).replace('T', ' ');
+}
 async function loadTradeGraph(traderId) {
     try {
         // 从API获取数据
@@ -21,14 +45,17 @@ async function loadTradeGraph(traderId) {
         var buyPoints = [];  // 新增，用于存储买入点
         var sellPoints = []; // 新增，用于存储卖出点
         var lines = []; // 存储买卖点之间的连线
-    
+        
         for (var i=0; i<trade_data.length; i++){
-          let formattedDateTime = trade_data[i].execution_time.slice(0, 13) + ':00:00';
+          // let formattedDateTime = convertToLocaleTime(trade_data[i].execution_time).slice(0, 13) + ':00:00';
+          // let InternaldDateTime = formatToFiveMinuteInterval(trade_data[i].execution_time);
+          // let formattedDateTime = convertToLocaleTime(InternaldDateTime);
+          let formattedDateTime = roundDownToFiveMinuteInterval(trade_data[i].execution_time);
 
+          // let formattedDateTime = dateObj.toISOString().slice(0, 19).replace('T', ' ');
           // 将日期对象格式化为字符串输出
           if (trade_data[i].side == 'BUY') { // 如果buy字段有值
               // 格式化为字符串输出
-              // let formattedDateTime = dateObj.toISOString().slice(0, 19).replace('T', ' ');
               buyPoints.push({
                   name: 'Buy',
                   value: [formattedDateTime, trade_data[i].trade_price],
@@ -155,14 +182,15 @@ async function loadTradeGraph(traderId) {
 
         }
 
-
+        
+        // categoryData = categoryData.map(convertToLocaleTime); //把时间转换成local时间
        
         // 主图表选项
         var mainOption = {
             title: {
               text: '策略数据图形化展示',
               left: 'center',  // 将标题居中
-              top: 30,         // 距离顶部的距离
+              top: '1%',         // 距离顶部的距离
               textStyle: {
                     fontWeight: 'bold',  // 设置为黑体
                     color: '#000'        // 设置标题文字颜色为黑色
@@ -170,14 +198,18 @@ async function loadTradeGraph(traderId) {
             },
             tooltip: {
                 trigger: 'axis',
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',  // 半透明黑色背景
+                borderWidth: 1,                        // 边框宽度
+                borderColor: 'rgba(200, 200, 200, 0.7)', // 半透明灰色边框
+                textStyle: {
+                    color: '#ffffff',                  // 白色文字
+                    fontSize: 12,                      // 字体大小
+                    fontWeight: 'normal'               // 字体粗细
+                },
+                padding: 10,                           // 内边距
+                extraCssText: 'box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);' ,// 添加阴影
                 axisPointer: {
                     type: 'cross'
-                },
-                borderWidth: 1,
-                borderColor: '#ccc',
-                padding: 10,
-                textStyle: {
-                  color: '#000'
                 },
                 position: function (pos, params, el, elRect, size) {
                           const obj = {
@@ -202,8 +234,8 @@ async function loadTradeGraph(traderId) {
                   type: 'slider',
                   xAxisIndex: [0,1,2],
                   realtime: false,
-                  start: 20,
-                  end: 70,
+                  start: 80,  // 例如从最后20%处开始显
+                  end: 100,   // 显示最新的数据
                   top: 'bottom',
                   height: 30,
                   handleSize: '120%'
@@ -211,8 +243,8 @@ async function loadTradeGraph(traderId) {
                 {
                   type: 'inside',
                   xAxisIndex: [0,1,2],
-                  start: 20,
-                  end: 70,
+                  start: 80,
+                  end: 100,
                   top: 30,
                   height: 20
                 }
@@ -337,19 +369,20 @@ async function loadTradeGraph(traderId) {
             grid: [  //改成百分数后，尺寸可以动态调整
                 {
                   left: '7%',
-                  right: '10%',
-                  height: '50%'
+                  right: '7%',
+                  height: '50%',
+                  top: '9%'
                 },
                 {
                   left: '7%',
-                  right: '10%',
-                  top: '57%',
+                  right: '7%',
+                  top: '62%',
                   height: '16%'
                 },
                 {
                   left: '7%',
-                  right: '10%',
-                  top: '75%',
+                  right: '7%',
+                  top: '80%',
                   height: '16%'
                 }
 
@@ -379,8 +412,15 @@ async function loadTradeGraph(traderId) {
             name: 'Fast MA',
             data: fastMA,
             smooth: true,
-            lineStyle: {
-                color: '#FF9900' // fast_ma均线颜色
+            showSymbol: false,  //不显示数据点只显示线条
+            itemStyle: {
+                color: '#FF9900',    // 数据点颜色设置为黄色（也可以是其他颜色）
+                borderWidth: 1,      // 点的边框宽度
+                borderColor: '#FF9900' // 点的边框颜色设置为蓝色
+            },
+            lineStyle:{
+              color: '#FF9900', //橙红色,
+              width: 1
             }
           },
           {
@@ -388,8 +428,15 @@ async function loadTradeGraph(traderId) {
             name: 'Slow MA',
             data: slowMA,
             smooth: true,
+            showSymbol: false,  //不显示数据点只显示线条
+            itemStyle: {
+                color: '#1E90FF',    // 数据点颜色设置为黄色（也可以是其他颜色）
+                borderWidth: 1,      // 点的边框宽度
+                borderColor: '#1E90FF' // 点的边框颜色设置为蓝色
+            },
             lineStyle:{
-              color: '#FF9922'
+              color: '#1E90FF', //蓝色,
+              width: 1
             }
           },
           {
@@ -476,16 +523,28 @@ async function loadTradeGraph(traderId) {
           }
         ];
 
+        // var stra_ma_legend = {  
+        //   // right: 30,
+        //   orient: 'vertical',  // 设置图例的排列方向为垂直
+        //   right: '-20px',       // 将图例挪到屏幕右边
+        //   top: '20%',       // 将图例垂直居中
+        //   // right: 10,
+        //   // top: 20,
+        //   // bottom: 20,
+        //   data: ['K线', 'Fast MA','Slow MA','Buy Points','Sell Points','Buy-Sell Lines','Volume','VolumeMa']
+        // };
+
         var stra_ma_legend = {  
-          // right: 30,
-          orient: 'vertical',  // 设置图例的排列方向为垂直
-          right: '10px',       // 将图例挪到屏幕右边
-          top: '10%',       // 将图例垂直居中
-          // right: 10,
-          // top: 20,
-          // bottom: 20,
-          data: ['K线', 'Fast MA','Slow MA','Buy Points','Sell Points','Buy-Sell Lines','Volume','VolumeMa']
-        };
+          type: 'scroll',            // 设置图例类型为可滑动
+          orient: 'horizontal',      // 水平排列
+          left: 'center',            // 水平居中
+          top: '4%',                 // 放置在标题下方
+          data: ['K线', 'Fast MA', 'Slow MA', 'Buy Points', 'Sell Points', 'Buy-Sell Lines', 'Volume', 'VolumeMa'],
+          pageIconColor: '#aaa',     // 滑动控制按钮颜色
+          pageTextStyle: {
+              color: '#333'          // 滑动控制按钮文字颜色
+          }
+       };
         mainOption.legend = stra_ma_legend;
         mainOption.series = mainOption.series.concat(trade_series);
         mainOption.series = mainOption.series.concat(stra_ma_series);

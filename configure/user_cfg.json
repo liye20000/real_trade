@@ -4,6 +4,6 @@
     "secret": "g7EIyuylKe2N28I6SAgK7XFUcBtQDeZYSIGEgojnGHAaJzoitGHMJz3dCaH0Lkpt",
     "symbol": "BTCUSDT",
     "positionSide": "LONG",
-    "USDTquantity": 5,
+    "USDTquantity": 500,
     "leverage":50
 }

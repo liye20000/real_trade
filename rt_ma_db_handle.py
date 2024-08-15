@@ -29,7 +29,8 @@ class StrategyDatabase:
                 volume_ma REAL,
                 signal TEXT,
                 buy REAL,
-                sell REAL
+                sell REAL,
+                processed INTEGER DEFAULT 0
             )
             ''')
             conn.commit()
@@ -42,20 +43,21 @@ class StrategyDatabase:
         try:
             # Ensure all required columns are present in the DataFrame
             required_columns = ['timestamp', 'open', 'high', 'low', 'close', 'volume',
-                                'sma_fast', 'sma_slow', 'volume_ma', 'signal', 'buy', 'sell']
+                                'sma_fast', 'sma_slow', 'volume_ma', 'signal', 'buy', 'sell','processed']
             for col in required_columns:
                 if col not in df.columns:
                     df[col] = None
 
             # Convert timestamp column to string
             df['timestamp'] = df['timestamp'].astype(str)
-            
+            # df['processed'] = df['processed'].astype(int)  # 将processed列转换为整数类型
+        
             conn = sqlite3.connect(self.db_name)
             cursor = conn.cursor()
             for index, row in df.iterrows():
                 cursor.execute('''
-                INSERT INTO strategy_data (timestamp, open, high, low, close, volume, sma_fast, sma_slow, volume_ma, signal, buy, sell)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO strategy_data (timestamp, open, high, low, close, volume, sma_fast, sma_slow, volume_ma, signal, buy, sell, processed)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(timestamp) DO UPDATE SET
                     open=excluded.open,
                     high=excluded.high,
@@ -67,8 +69,9 @@ class StrategyDatabase:
                     volume_ma=excluded.volume_ma,
                     signal=excluded.signal,
                     buy=excluded.buy,
-                    sell=excluded.sell
-                ''', (row['timestamp'], row['open'], row['high'], row['low'], row['close'], row['volume'], row['sma_fast'], row['sma_slow'], row['volume_ma'], row['signal'], row['buy'], row['sell']))
+                    sell=excluded.sell,
+                    processed=COALESCE(strategy_data.processed, excluded.processed) 
+                ''', (row['timestamp'], row['open'], row['high'], row['low'], row['close'], row['volume'], row['sma_fast'], row['sma_slow'], row['volume_ma'], row['signal'], row['buy'], row['sell'], row['processed']))
             conn.commit()
             conn.close()
             self.logger.info("Data inserted/updated successfully.")
@@ -150,8 +153,26 @@ def db_process_test_func():
         'sell': [None, 114, None]
     }
 
+    processed_strategy_data = {
+        'timestamp': ['2024-07-27 12:00:00', '2024-07-27 12:05:00', '2024-07-27 12:10:00'],
+        'open': [100, 110, 120],
+        'high': [105, 115, 125],
+        'low': [95, 105, 115],
+        'close': [104, 114, 124],
+        'volume': [1000, 1500, 2000],
+        'sma_fast': [102, 112, 122],
+        'sma_slow': [101, 111, 121],
+        'volume_ma': [1200, 1300, 1400],
+        'signal': ['buy', 'sell', 'hold'],
+        'buy': [104, None, None],
+        'sell': [None, 114, None],
+        'processed':[False,False,True]
+    }
+
+
     initial_df = pd.DataFrame(initial_data)
     strategy_df = pd.DataFrame(strategy_data)
+    processed_strategy_df = pd.DataFrame(processed_strategy_data)
 
     # 插入基础数据
     db_strategy.insert_or_update_data(initial_df)
@@ -161,28 +182,35 @@ def db_process_test_func():
     db_strategy.insert_or_update_data(strategy_df)
     print_db()
     
-
-    # 读取部分数据（2条）
-    data = db_strategy.query_data(limit=2)
-    print(data)
-
-    # 根据时间读取数据（某时间点后的数据）
-    data = db_strategy.query_data(start_time='2024-07-27 12:05:00')
-    print(data)
-
-    # 擦除数据（某时间点前的数据）
-    db_strategy.delete_data(end_time='2024-07-27 12:05:00')
+    # 插入处理过的策略数据
+    db_strategy.insert_or_update_data(processed_strategy_df)
     print_db()
 
-    # 擦除数据（最早的1条数据）
-    db_strategy.delete_data(limit=1)
-    # 打印所有数据
-    print_db()
-    
+    # 插入基础数据
     db_strategy.insert_or_update_data(strategy_df)
     print_db()
-    db_strategy.delete_data()
-    print_db()
+ 
+    # # 读取部分数据（2条）
+    # data = db_strategy.query_data(limit=2)
+    # print(data)
+
+    # # 根据时间读取数据（某时间点后的数据）
+    # data = db_strategy.query_data(start_time='2024-07-27 12:05:00')
+    # print(data)
+
+    # # 擦除数据（某时间点前的数据）
+    # db_strategy.delete_data(end_time='2024-07-27 12:05:00')
+    # print_db()
+
+    # # 擦除数据（最早的1条数据）
+    # db_strategy.delete_data(limit=1)
+    # # 打印所有数据
+    # print_db()
+    
+    # db_strategy.insert_or_update_data(strategy_df)
+    # print_db()
+    # db_strategy.delete_data()
+    # print_db()
 # 全局变量
 
 def fetch_caculate_and_store_test():

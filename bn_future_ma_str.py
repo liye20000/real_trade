@@ -45,16 +45,30 @@ class bn_future_ma_trader:
                 #获取数据
                 df = self.fetcher.fetch_data()
                 self.storer.insert_or_update_data(df)
+
+                # # test
+                # df = self.storer.query_data()
+                # print(df)
                 
                 #策略处理，数据更新
                 df = self.storer.query_data()
                 df = self.strager.generate_signals(df)
                 self.storer.insert_or_update_data(df)
-                # self.storer.print_data()
+
+                # # test
+                # df = self.storer.query_data()
+                # print(df)
 
                 #交易处理
                 df = self.storer.query_data()
-                self.trader.process_trade(df)
+                df = self.trader.process_trade(df)
+                # print(df)
+                if df is not None and not df.empty:
+                    self.storer.insert_or_update_data(df)
+                
+                # test
+                # df = self.storer.query_data()
+                # print(df)
                 
         except Exception as e:            
             self.logger.error(f"unexpected error occured: {e}")
@@ -85,10 +99,12 @@ if __name__ == "__main__":
     
     test_trader = bn_future_ma_trader()
 
+    test_trader.process_stategy()
+
     # test_trader.process_stategy()
 
-    dict = test_trader.show_strategydata()
-    print(dict)
+    # dict = test_trader.show_strategydata()
+    # print(dict)
 
     # test_trader.sho
      

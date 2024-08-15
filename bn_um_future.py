@@ -5,7 +5,7 @@ from lb_logger import log
 import pandas as pd
 import json
 from lb_para_handler import ParameterHandler
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from lb_trading_db import TradeDatabase
 from lb_im_telegram import TelegramNotifier
 
@@ -241,6 +241,7 @@ class Bn_um_future(UMFutures):
             self.logger.error(f"Unexpected error occurred while cancelling order: {e}")
         return None
     def _convert_timestamp_to_datetime(self,timestamp):
+        # TODO: 修改为带时区的时间
         # 转换时间戳（毫秒）为秒
         timestamp_in_seconds = timestamp / 1000
         # 使用datetime.fromtimestamp()方法转换为datetime对象
@@ -255,7 +256,7 @@ class Bn_um_future(UMFutures):
         if account_info is not  None:
             # 获取当前头寸信息
             # Positions = account.get_position_by_symbol(account_info, self.symbol)
-            Positions = account.get_position_by_symbolAndpositionside(account_data=account_info,symbol=self.symbol,position_side=self.positionside)
+            Positions = self.get_position_by_symbolAndpositionside(account_data=account_info,symbol=self.symbol,position_side=self.positionside)
             # 无symbol的long头寸且执行BUY操作
             # 有symbol的long头寸且执行SELL操作
             if (Positions is None and trade_side == 'BUY') or (Positions is not None and trade_side == 'SELL'):
@@ -268,7 +269,7 @@ class Bn_um_future(UMFutures):
                     trade_quantity = Positions
                 print(f'trade_quantity:{trade_quantity}')
                 # 执行交易操作(json获取symbol，获取quantity，获取position side？，执行side)        
-                order = account.place_order(symbol=self.symbol, 
+                order = self.place_order(symbol=self.symbol, 
                                             side=trade_side,   
                                             order_type='MARKET', 
                                             positionSide = self.positionside,
@@ -283,7 +284,7 @@ class Bn_um_future(UMFutures):
                     # 提取 orderId 信息
                     trade_order_id = order_dict.get("orderId")
                     print(f'orderid:{trade_order_id}')
-                    confirm_order = account.get_order(symbol=self.symbol,order_id=trade_order_id)
+                    confirm_order = self.get_order(symbol=self.symbol,order_id=trade_order_id)
                     # 根据返回订单号查询交易执行情况，如成功
                     if confirm_order is not None:
                         # confirm_order_dict = json.loads(confirm_order)
@@ -330,7 +331,7 @@ class Bn_um_future(UMFutures):
                                              trade_price= trade_price, 
                                              order_id= '123456',
                                              execution_time= now.strftime('%Y-%m-%d %H:%M:%S') )
-        self.trading_db.print_trades_as_dataframe()
+        # self.trading_db.print_trades_as_dataframe()
         # 发送IM消息 
         self.im_notifier.send_trade_info(symbol=self.symbol,
                                          side = trade_side,
@@ -342,56 +343,111 @@ class Bn_um_future(UMFutures):
                                          execution_time= now.strftime('%Y-%m-%d %H:%M:%S'))
         return
     
-    def process_trade(self, df):
-        self.logger.info("Start Process trade")
+    def process_trade(self, df, current_time=None):
+        # self.logger.info("Start Process trade")
         try:
-            # current_time = datetime.now()
-            # TODO: 测试后改成真正的时间
-            current_time = datetime.strptime("2024-07-28 18:00:00", '%Y-%m-%d %H:%M:%S')
-            time_window_start = current_time - timedelta(minutes=60)
-            time_window_end = current_time + timedelta(minutes=60)
+            # 获取当前本地时间
+            if current_time is None:
+                current_time = datetime.now()
 
-            # 按时间戳倒序排列
+            # 计算窗口期基数：获取 df 中最近两条记录的时间间隔
+            if len(df) >= 2:
+                df['timestamp'] = pd.to_datetime(df['timestamp'])
+                df = df.sort_values(by='timestamp', ascending=False)
+                window_base = (df['timestamp'].iloc[0] - df['timestamp'].iloc[1]).total_seconds()
+            else:
+                window_base = 60  # 默认窗口基数为60秒
+
+            # 确定时间窗口
+            time_window_start = current_time - timedelta(seconds=window_base + 120)  # 后向时间段
+            time_window_end = current_time + timedelta(minutes=2)  # 前向时间段
+
+            self.logger.info(f'Current time is {current_time} {time_window_start} {time_window_end}')
+            # print(df)
+            # 筛选满足条件的条目
             df['timestamp'] = pd.to_datetime(df['timestamp'])
-            df = df.sort_values(by='timestamp', ascending=False)
-
-            # 筛选时间窗口内的数据
-            mask = (df['timestamp'] >= time_window_start) & (df['timestamp'] <= time_window_end)
-            df_filtered = df[mask]
-
+            df['processed'] = df['processed'].fillna(False)
+            mask = (
+                (df['timestamp'] >= time_window_start) &
+                (df['timestamp'] <= time_window_end) &
+                (df['processed'] == False) &
+                (df[['buy', 'sell']].notnull().any(axis=1))
+            )
+            df_filtered = df[mask].sort_values(by='timestamp', ascending=False)
+            print('It is a test')
             print(df_filtered)
 
-            # 从数据中获取signal
-            for i, row in df_filtered.iterrows():
+            # 处理找到的第一个信号
+            if not df_filtered.empty:
+                row = df_filtered.iloc[0]
                 if pd.notnull(row['buy']):
-                    # BUY信号：如果账户没有此交易对的 LONG 仓位，执行buy买入
-                    buy_price = row['buy']
-                    self._test_perform_order(trade_side='BUY', trade_price=buy_price)
+                    self._test_perform_order(trade_side='BUY', trade_price=row['buy'])
+                elif pd.notnull(row['sell']):
+                    self._test_perform_order(trade_side='SELL', trade_price=row['sell'])
 
-                    break  # 找到第一个信号后退出
+                df.at[row.name, 'processed'] = True  # 标记为已处理
 
-                if pd.notnull(row['sell']):
-                    # SELL信号：如果账户有此交易对的 LONG 仓位，执行sell卖出
-                    sell_price = row['sell']
-                    self._test_perform_order(trade_side='SELL', trade_price=sell_price)
-                    break  # 找到第一个信号后退出
+                # 将返回的 df_filtered 转换为字符串格式
+                df_filtered['timestamp'] = df_filtered['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
+                # print(df.loc[row.name])
+                return df.loc[[row.name]]
+
         except Exception as e:
             self.logger.error(f"An error occurred during trade processing: {e}")
-        return None
-    # Example usage
-if __name__ == '__main__':
-    param_handler = ParameterHandler()
-    param_handler.load_from_json('configure/user_cfg.json')
+
+        return None 
+# Example usage
+def test_process_function():
+    data = {
+    'timestamp': [
+        '2024-08-14 15:00:00',
+        '2024-08-14 15:05:00',
+        '2024-08-14 15:10:00',
+        '2024-08-14 15:15:00',
+        '2024-08-14 15:20:00'
+    ],
+    'open': [100, 102, 104, 106, 108],
+    'high': [101, 103, 105, 107, 109],
+    'low': [99, 101, 103, 105, 107],
+    'close': [100.5, 102.5, 104.5, 106.5, 108.5],
+    'volume': [1000, 1500, 2000, 2500, 3000],
+    'sma_fast': [101, 103, 105, 107, 109],
+    'sma_slow': [100, 102, 104, 106, 108],
+    'volume_ma': [1200, 1600, 1800, 2200, 2600],
+    'signal': [None, 'buy', None, 'sell', None],
+    'buy': [None, 102.5, None, None, 113.5],
+    'sell': [None, None, None, 106.5, None],
+    'processed': [True, None, None, None, False]
+    }
+    # 创建 DataFrame
+    df = pd.DataFrame(data)
+    df['timestamp'] = pd.to_datetime(df['timestamp'])  # 转换为 datetime 类型
+    print(df)
 
     test_para = {
             'trader_cfg': 'configure/user_cfg.json',
             'trader_db':  'test/trader_test.db'
     }
     account = Bn_um_future(test_para['trader_cfg'], test_para['trader_db'])
-    # account._perform_tradingorder('SELL', 64254.03)
-    # account._test_perform_order('BUY', 64254.03)
-    account_info  = account.v3_account()
-    account.convert_account_info(account_info)
+
+    test_time = datetime(2024, 8, 14 ,15, 23)  # 例如2024-08-12 13:08:00
+    account.process_trade(df,test_time)
+    return
+
+if __name__ == '__main__':
+    test_process_function()
+    # param_handler = ParameterHandler()
+    # param_handler.load_from_json('configure/user_cfg.json')
+
+    # test_para = {
+    #         'trader_cfg': 'configure/user_cfg.json',
+    #         'trader_db':  'test/trader_test.db'
+    # }
+    # account = Bn_um_future(test_para['trader_cfg'], test_para['trader_db'])
+    # # account._perform_tradingorder('SELL', 64254.03)
+    # # account._test_perform_order('BUY', 64254.03)
+    # account_info  = account.v3_account()
+    # account.convert_account_info(account_info)
 
     # # Get v3 account info
     # account_info = account.v3_account(recvWindow = 6000)
