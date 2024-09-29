@@ -1,7 +1,7 @@
 {
     "bourse": "Binance",
     "key": "nGXPRad8iBKt2h83U3JOitYPBinu4un7pp5gsBnKSzWACUkvu51UOzNMeNkaDQIN",
-    "secret": "g7EIyuylKe2N28I6SAgK7XFUcBtQDeZYSIGEgojnGHAaJzoitGHMJz3dCaH0Lkpt",
+    "secret": "",
     "symbol": "BTCUSDT",
     "positionSide": "LONG",
     "USDTquantity": 500,
